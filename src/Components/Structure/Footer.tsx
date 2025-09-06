@@ -8,7 +8,7 @@ export default function Footer() {
           تمامی حقوق برای وبسایت شیعه میم محفوظ است.
         </span>
         <a className="mt-2 text-sm text-blue-600 hover:underline md:mt-0 lg:text-base">
-          طراحی و توسعه توسط «آرمانگرا»
+          طراحی و توسعه توسط «<span className="font-bold">ارمانگار</span>»
         </a>
       </div>
     </div>

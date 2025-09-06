@@ -7,6 +7,9 @@ import localFont from "next/font/local";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  ),
   title: {
     default: "میم‌های شیعه - سرگرمی و طنز مذهبی",
     template: "میم‌های شیعه - %s",
@@ -56,7 +59,8 @@ export const metadata: Metadata = {
     creator: "@yourtwitterhandle",
   },
   icons: {
-    icon: "./favicon.ico",
+    // بهتره از مسیر از ریشه استفاده کنید تا مشکل مسیریابی نداشته باشه
+    icon: "/favicon.ico",
   },
   manifest: "/site.webmanifest",
   robots: {

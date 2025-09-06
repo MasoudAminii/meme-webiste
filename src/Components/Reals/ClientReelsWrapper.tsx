@@ -1,6 +1,7 @@
 // components/Reals/ClientReelsWrapper.tsx
 "use client";
 
+
 import { StaticImageData } from "next/image";
 import ReelsFeed from "./ReelsFeed";
 

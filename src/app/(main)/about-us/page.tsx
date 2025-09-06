@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { Metadata } from "next";
-
+import prisma from "@/lib/db";
 
 export const metadata: Metadata = {
   title: "درباره ما",
@@ -8,19 +8,31 @@ export const metadata: Metadata = {
     "با تیم میم‌های شیعه آشنا شوید و بهترین میم‌های مذهبی و طنز شیعی را مشاهده کنید.",
 };
 
-export default function AboutUs() {
+export default async function AboutUs() {
+  const data = await prisma.aboutUs.findFirst();
+
+  // handle case where table is empty (shouldn't happen if you always have one row)
+  if (!data) {
+    return (
+      <div className="AboutUs">
+        <p>اطلاعات درباره ما پیدا نشد.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="AboutUs">
       <div className="Banner mb-6 md:mb-8">
         <div className="banner-image overflow-hidden rounded-[20px] drop-shadow-xl">
           <Image
-            src="/banner/shia-meme-banner.jpg"
-            alt="درباره ما"
+            src={`/banner/${data?.BannerUrl ?? "shia-meme-banner.jpg"}`}
+            alt={data?.BannerUrl ?? "بنر میم شیعه"}
             width={1200}
             height={400}
             priority
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             quality={100}
-            className="h-auto w-full object-contain"
+            className="h-auto w-full rounded-[20px] object-contain"
           />
         </div>
       </div>
@@ -28,17 +40,8 @@ export default function AboutUs() {
       <div className="description mb-6 md:mb-10">
         <h1 className="text-3xl font-extrabold sm:text-4xl">درباره ما</h1>
         <p className="mt-4 text-base leading-relaxed font-normal sm:text-lg">
-          پرسشی که همواره با او دست به گریبان هستم مرا به ورطه های مختلف کشانید
-          و ماحصلی بی مثال برای من به همراه داشت و برایم آموزگاری قهار گشت و به
-          مثابه خود افرادی را پیرامون من جمع نمود.
-        </p>
-        <p className="mt-2 text-base leading-relaxed font-normal sm:text-lg">
-          اندکی آموختم که در قیاس آموختن هیچست به گریبان هستم مرا به ورطه های
-          مختلف کشانید و ماحصلی بی مثال برای من به همراه داشت و برایم آموزگاریست
-          به گریبان هستم مرا به ورطه های مختلف کشانید و ماحصلی بی مثال برای من
-          به همراه داشت و برایم آموزگاری قهار گشت و به مثابه خ قهار گشت و به
-          مثابه خست به گریبان هستم مرا به ورطه های مختلف که مقصد را نیست و اینست
-          نقطه تامل که
+          {data?.description ??
+            "میم‌های شیعه یک پلتفرم آنلاین است که به ارائه میم‌های مذهبی و طنز شیعی می‌پردازد. هدف ما ایجاد فضایی سرگرم‌کننده و آموزنده برای کاربران است تا از طریق میم‌ها با مفاهیم دینی آشنا شوند و لحظاتی شاد را تجربه کنند."}
         </p>
       </div>
 
@@ -46,25 +49,31 @@ export default function AboutUs() {
         <div className="flex w-full flex-col items-stretch justify-between rounded-2xl bg-gradient-to-r from-[#29209D] to-[#635AD9] p-4 text-white md:flex-row md:p-6">
           {/* Item 1 */}
           <div className="flex flex-1 flex-col items-center justify-center gap-2 border-b border-white/10 py-4 md:border-b-0">
-            <p className="text-3xl font-bold sm:text-4xl md:text-5xl">1670+</p>
+            <p className="text-3xl font-bold sm:text-4xl md:text-5xl">
+              {data.overviewContent}+
+            </p>
             <span className="text-base font-semibold sm:text-lg md:text-xl">
-              سال تاسیس
+              {data.overviewLabel}
             </span>
           </div>
 
           {/* Item 2 */}
           <div className="flex flex-1 flex-col items-center justify-center gap-2 border-b border-white/10 py-4 md:border-r md:border-b-0">
-            <p className="text-3xl font-bold sm:text-4xl md:text-5xl">1670+</p>
+            <p className="text-3xl font-bold sm:text-4xl md:text-5xl">
+              {data.siteInfoContent}+
+            </p>
             <span className="text-base font-semibold sm:text-lg md:text-xl">
-              سال تاسیس
+              {data.siteInfoLabel}
             </span>
           </div>
 
           {/* Item 3 */}
           <div className="flex flex-1 flex-col items-center justify-center gap-2 border-b border-white/10 py-4 md:border-r md:border-b-0">
-            <p className="text-3xl font-bold sm:text-4xl md:text-5xl">1670+</p>
+            <p className="text-3xl font-bold sm:text-4xl md:text-5xl">
+              {data.statisticsContent}+
+            </p>
             <span className="text-base font-semibold sm:text-lg md:text-xl">
-              سال تاسیس
+              {data.statisticsLabel}
             </span>
           </div>
 

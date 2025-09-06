@@ -170,6 +170,39 @@ async function main() {
     console.log(`Upserted link ${link.slug}`);
   }
 
+  await prisma.aboutUs.upsert({
+    where: { id: 1 },
+    update: {
+      BannerUrl: "shia-meme-banner.jpg",
+      description: `میم‌های شیعه فضای طنزی هستند که همراه با احترام به باورهای دینی، لحظاتی شاد و تأمل‌برانگیز خلق می‌کنند.
+هدف ما گردآوری و انتشار میم‌های خلاقانه‌ای است که از فرهنگ و زندگی روزمره شیعی الهام گرفته‌اند.
+در این صفحه مجموعه‌ای از میم‌ها، کاریکاتورها و کپشن‌هایی با حال و هوای مذهبی و اجتماعی خواهید دید.
+ما به تفاوت‌ نظرها احترام می‌گذاریم و سعی می‌کنیم محتوایی مؤدبانه و سازگار با ارزش‌های دینی عرضه کنیم.
+با ما بمانید تا هم بخندید و هم فرصتی برای تأمل پیدا کنید — طنزی آگاه و محترم برای یک جامعه بزرگ`,
+      overviewLabel: "درباره ما",
+      overviewContent: 1928, // use number if schema has Int, otherwise "1928"
+      statisticsLabel: "آمار",
+      statisticsContent: 1728, // use number if schema has Int, otherwise "1728"
+      siteInfoLabel: "اطلاعات سایت",
+      siteInfoContent: 716, // use number if schema has Int, otherwise "716"
+    },
+    create: {
+      id: 1, // optional, but keeps the created row matching the where
+      BannerUrl: "shia-meme-banner.jpg",
+      description: `میم‌های شیعه فضای طنزی هستند که همراه با احترام به باورهای دینی، لحظاتی شاد و تأمل‌برانگیز خلق می‌کنند.
+هدف ما گردآوری و انتشار میم‌های خلاقانه‌ای است که از فرهنگ و زندگی روزمره شیعی الهام گرفته‌اند.
+در این صفحه مجموعه‌ای از میم‌ها، کاریکاتورها و کپشن‌هایی با حال و هوای مذهبی و اجتماعی خواهید دید.
+ما به تفاوت‌ نظرها احترام می‌گذاریم و سعی می‌کنیم محتوایی مؤدبانه و سازگار با ارزش‌های دینی عرضه کنیم.
+با ما بمانید تا هم بخندید و هم فرصتی برای تأمل پیدا کنید — طنزی آگاه و محترم برای یک جامعه بزرگ`,
+      overviewLabel: "درباره ما",
+      overviewContent: 1928,
+      statisticsLabel: "آمار",
+      statisticsContent: 1728,
+      siteInfoLabel: "اطلاعات سایت",
+      siteInfoContent: 716,
+    },
+  });
+
   console.log("Seeding finished.");
 }
 

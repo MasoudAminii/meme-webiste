@@ -1,4 +1,4 @@
-// ReelsFeed.tsx - Updated with reels/ URLs
+// ReelsFeed.tsx - Improved performance for initial scroll / faster URL updates
 "use client";
 
 import React, { useRef, useEffect, useCallback, useState } from "react";
@@ -35,13 +35,8 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
   const urlTimeoutRef = useRef<number | null>(null);
   const lastUrlRef = useRef<string>("");
 
-  // Detect if we're on a reels or gallery page
-  const getRoutePrefix = useCallback(() => {
-    const pathname = window.location.pathname;
-    if (pathname.startsWith("/reels")) return "/reels";
-    if (pathname.startsWith("/gallery")) return "/gallery";
-    return "/reels"; // default fallback
-  }, []);
+  // route is always /reels here
+  const getRoutePrefix = useCallback(() => "/reels", []);
 
   const updateUrl = useCallback(
     (slug: string, usePush = true) => {
@@ -49,6 +44,7 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
       if (urlTimeoutRef.current) {
         window.clearTimeout(urlTimeoutRef.current);
       }
+      // smaller debounce so URL reflects the new slug faster
       urlTimeoutRef.current = window.setTimeout(() => {
         const routePrefix = getRoutePrefix();
         const path = `${routePrefix}/${slug}`;
@@ -58,25 +54,58 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
           window.history.replaceState({ slug }, "", path);
         }
         lastUrlRef.current = slug;
-      }, 250);
+      }, 100); // 100ms (was 250)
     },
     [getRoutePrefix],
   );
 
-  const scrollToIndex = useCallback((idx: number) => {
-    const container = containerRef.current;
-    const selector = `.reel-item[data-index="${idx}"]`;
-    const el =
-      (container?.querySelector<HTMLElement>(selector) as HTMLElement) ??
-      (document.querySelector<HTMLElement>(selector) as HTMLElement);
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  /**
+   * Scroll to an index.
+   * opts.behavior: 'auto' for instant (used on initial navigation), 'smooth' for user navigation
+   */
+  const scrollToIndex = useCallback(
+    (idx: number, opts?: { behavior?: ScrollBehavior }) => {
+      const container = containerRef.current;
+      const selector = `.reel-item[data-index="${idx}"]`;
+      const el =
+        (container?.querySelector<HTMLElement>(selector) as HTMLElement) ??
+        (document.querySelector<HTMLElement>(selector) as HTMLElement);
+      if (!el) return;
 
-  // initial scroll + replaceState
+      const behavior = opts?.behavior ?? "smooth";
+
+      // Prefer scrolling the container directly (faster and more predictable)
+      if (container) {
+        // offsetTop is relative to the container when the container is the offset parent.
+        // To be safe compute top relative to container's scrollTop
+        const top =
+          el.offsetTop -
+          (container.offsetTop
+            ? container.offsetTop
+            : container.getBoundingClientRect().top -
+              container.getBoundingClientRect().top);
+        try {
+          container.scrollTo({ top, behavior });
+        } catch {
+          // fallback
+          el.scrollIntoView({ behavior, block: "start" });
+        }
+        return;
+      }
+
+      // fallback if no container found
+      el.scrollIntoView({ behavior, block: "start" });
+    },
+    [],
+  );
+
+  // initial scroll + replaceState — make initial scroll instant to avoid perceived slowness
   useEffect(() => {
+    // Use a tiny delay to let layout settle but avoid long waits.
     const t = window.setTimeout(() => {
-      scrollToIndex(initialIndex);
+      // Use 'auto' so the initial jump is instant on navigation from gallery
+      scrollToIndex(initialIndex, { behavior: "auto" });
+
       if (posts[initialIndex]?.slug) {
         lastUrlRef.current = posts[initialIndex].slug;
         const routePrefix = getRoutePrefix();
@@ -86,7 +115,7 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
           `${routePrefix}/${posts[initialIndex].slug}`,
         );
       }
-    }, 40);
+    }, 0); // set to 0 (was 40ms)
     return () => window.clearTimeout(t);
   }, [initialIndex, posts, scrollToIndex, getRoutePrefix]);
 
@@ -129,7 +158,6 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
   useEffect(() => {
     const onPop = () => {
       const pathSegments = window.location.pathname.split("/").filter(Boolean);
-      // Look for /reels/[slug] or /gallery/[slug] pattern
       const reelsIndex = pathSegments.indexOf("reels");
       const galleryIndex = pathSegments.indexOf("gallery");
 
@@ -145,7 +173,8 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
       if (idx >= 0 && idx !== currentIndexRef.current) {
         currentIndexRef.current = idx;
         setCurrentIndex(idx);
-        scrollToIndex(idx);
+        // use instant scroll when popping state (avoid flicker)
+        scrollToIndex(idx, { behavior: "auto" });
         lastUrlRef.current = slugFromPath;
       }
     };
@@ -153,17 +182,17 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
     return () => window.removeEventListener("popstate", onPop);
   }, [posts, scrollToIndex]);
 
-  // keyboard nav
+  // keyboard nav — keep smooth for a pleasant user feel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (["ArrowDown", "PageDown"].includes(e.key)) {
         e.preventDefault();
         const next = Math.min(currentIndexRef.current + 1, posts.length - 1);
-        scrollToIndex(next);
+        scrollToIndex(next, { behavior: "smooth" });
       } else if (["ArrowUp", "PageUp"].includes(e.key)) {
         e.preventDefault();
         const prev = Math.max(currentIndexRef.current - 1, 0);
-        scrollToIndex(prev);
+        scrollToIndex(prev, { behavior: "smooth" });
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -180,7 +209,7 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
   return (
     <div
       ref={containerRef}
-      className="no-scrollbar -webkit-overflow-scrolling-touch mx-auto flex h-screen w-full snap-y snap-mandatory flex-col gap-2 overflow-y-auto lg:h-[calc(100vh-4rem)] lg:max-w-[600px] lg:gap-6"
+      className="no-scrollbar -webkit-overflow-scrolling-touch mx-auto flex h-screen w-full snap-y snap-mandatory flex-col overflow-y-auto lg:h-[calc(100vh-4rem)] lg:max-w-[600px] lg:gap-6"
       role="list"
     >
       {posts.map((p, i) => {

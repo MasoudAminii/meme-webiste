@@ -1,7 +1,7 @@
 // app/gallery/page.tsx
 import Link from "next/link";
-import ShareButton from "./ShareButton";
-import HoverVideo from "./HoverVideo";
+import ShareButton from "./ShareButton"; // adjust path if different
+import HoverVideo from "./HoverVideo"; // adjust path if different
 import Image from "next/image";
 import prisma from "@/lib/db";
 import type { Metadata } from "next";
@@ -12,16 +12,6 @@ export const metadata: Metadata = {
     "به گالری میم‌های شیعه خوش آمدید. مجموعه‌ای از بهترین میم‌ها و پست‌های طنز مذهبی را در اینجا مشاهده کنید.",
 };
 
-export async function generateStaticParams() {
-  const mediaItems = await prisma.mediaItem.findMany({
-    select: { slug: true },
-  });
-
-  return mediaItems.map((item) => ({
-    slug: item.slug,
-  }));
-}
-
 type MediaItem = {
   id: number;
   src: string | null;
@@ -30,7 +20,7 @@ type MediaItem = {
 };
 
 export default async function GalleryPage() {
-  let items: MediaItem[] = []; // Initialize as empty array
+  let items: MediaItem[] = [];
 
   try {
     items = await prisma.mediaItem.findMany({
@@ -44,7 +34,7 @@ export default async function GalleryPage() {
     });
   } catch (error) {
     console.error("Prisma fetch failed, using fallback media.", error);
-    // items remains as empty array
+    // items remains empty
   }
 
   return (
@@ -52,10 +42,11 @@ export default async function GalleryPage() {
       <div className="columns-2 gap-4 md:columns-3 lg:columns-4">
         {items.map((item, index) => {
           const src = item.src;
-          if (!src) return null; // guard: src is optional in schema
+          if (!src) return null;
 
           const isVideo = src.toLowerCase().endsWith(".mp4");
-          const href = `/gallery/${item.slug ?? String(item.id)}`;
+          // <- changed to point to /reels
+          const href = `/reels/${item.slug ?? String(item.id)}`;
 
           if (!isVideo) {
             return (

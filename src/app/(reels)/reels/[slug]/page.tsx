@@ -1,6 +1,6 @@
-// app/gallery/[slug]/page.tsx
+// app/reels/[slug]/page.tsx
 import React from "react";
-import ClientReelsWrapper from "@/Components/Reals/ClientReelsWrapper"; // Changed this line
+import ClientReelsWrapper from "@/Components/Reals/ClientReelsWrapper";
 import prisma from "@/lib/db";
 import type { Metadata } from "next";
 
@@ -10,25 +10,41 @@ export const metadata: Metadata = {
     "بهترین مجموعه میم‌های شیعه، لحظات خنده‌دار و آموزنده مذهبی برای همه‌ی دوستداران طنز و فرهنگ شیعی.",
 };
 
+// Generate static params for popular/recent posts only
 export async function generateStaticParams() {
-  // Fetch all slugs from the database
-  const items = await prisma.mediaItem.findMany({
-    select: { slug: true },
-  });
+  try {
+    // Only pre-generate the most popular or recent 10-20 posts
+    const items = await prisma.mediaItem.findMany({
+      where: {
+        src: { not: null },
+      },
+      select: { slug: true },
+      orderBy: [
+        { views: "desc" }, // Most viewed first
+        { createdAt: "desc" }, // Then most recent
+      ],
+      take: 15, // Pre-generate only top 15 posts
+    });
 
-  // Return as array of objects
-  return items.map((item) => ({
-    slug: item.slug,
-  }));
+    return items.map((item) => ({
+      slug: item.slug,
+    }));
+  } catch (error) {
+    console.warn("Failed to generate static params:", error);
+    return []; // Fallback to dynamic rendering
+  }
 }
+
+// Enable ISR (Incremental Static Regeneration)
+export const revalidate = 3600; // Revalidate every hour
 
 export default async function Page({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  // await params (Next.js requires this in some environments)
   const { slug } = await params;
+
   // Fetch a set of reels (adjust order / limit as you want)
   const reels = await prisma.mediaItem.findMany({
     orderBy: { createdAt: "desc" },
@@ -56,7 +72,7 @@ export default async function Page({
   // remove items with null src before mapping
   const validReels = reels.filter((r) => !!r.src);
 
-  const posts = validReels.map((r) => ({
+  const allPosts = validReels.map((r) => ({
     id: r.id,
     slug: r.slug,
     src: r.src!, // safe because filtered
@@ -68,7 +84,7 @@ export default async function Page({
     author: r.author ?? "@uploader",
   }));
 
-  if (posts.length === 0) {
+  if (allPosts.length === 0) {
     return (
       <div className="RealsMedia min-h-[calc(100vh-9.5rem)]">
         <p className="mt-2 text-base font-normal">No valid media to show</p>
@@ -76,14 +92,28 @@ export default async function Page({
     );
   }
 
-  const initialIndex = Math.max(
-    posts.findIndex((p) => p.slug === slug),
-    0,
-  );
+  // Find the index of the current slug
+  const currentIndex = allPosts.findIndex((p) => p.slug === slug);
+
+  // If slug not found, default to first post
+  if (currentIndex === -1) {
+    return (
+      <div className="RealsMedia">
+        <ClientReelsWrapper posts={allPosts} initialIndex={0} />
+      </div>
+    );
+  }
+
+  // Reorder posts: current post first, then all others in sequence
+  const reorderedPosts = [
+    allPosts[currentIndex],
+    ...allPosts.slice(currentIndex + 1),
+    ...allPosts.slice(0, currentIndex),
+  ];
 
   return (
     <div className="RealsMedia">
-      <ClientReelsWrapper posts={posts} initialIndex={initialIndex} />
+      <ClientReelsWrapper posts={reorderedPosts} initialIndex={0} />
     </div>
   );
 }

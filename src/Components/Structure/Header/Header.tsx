@@ -7,7 +7,7 @@ const Header = () => {
   return (
     <>
       <nav
-        className="bg-bg-gradient-2 sticky top-8 z-50 flex max-w-[367px] min-w-[367px] flex-col justify-between gap-8 rounded-[20px] p-8 shadow-2xl max-lg:hidden"
+        className="bg-bg-gradient-2 sticky top-8 z-50 flex max-w-[367px] min-w-[367px] flex-col justify-between gap-8 rounded-[20px] p-6 shadow-2xl max-lg:hidden"
         style={{
           height: "clamp(600px, calc(100vh - 4rem), 958px)",
           minHeight: "768px",
@@ -23,7 +23,7 @@ const Header = () => {
                 width={80}
                 height={80}
                 priority
-                className="h-auto max-h-[160px] w-auto max-w-[160px]"
+                className="h-auto max-h-[100px] w-auto max-w-[100px]"
               />
             </div>
             <div className="flex flex-shrink-0 flex-col">
@@ -50,7 +50,7 @@ const Header = () => {
             <h5 className="mb-2 text-[21px] font-semibold text-black">
               استفاده از در حالت PWA
             </h5>
-            <p className="py-3 font-semibold leading-relaxed text-black">
+            <p className="py-3 leading-relaxed font-semibold text-black">
               برای استفاده بهتر و دسترسی راحت‌تر از حالت اپلیکیشن استفاده کنید.
             </p>
             <button className="btn–gradient mt-2 w-full cursor-pointer rounded-xl py-4 text-lg font-semibold transition-all duration-200 hover:shadow-lg active:scale-95">

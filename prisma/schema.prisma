@@ -41,14 +41,15 @@ model MediaItem {
 
 /// About Us: consolidated content
 model AboutUs {
-  id            Int      @id @default(autoincrement())
-  description   String                                    // Introductory paragraph
-  overviewLabel      String?                                   // Detailed overview
-  overviewContent    Int?                                   // Full overview content
-  statisticsLabel    String?                                     // Key/value metrics, e.g. { "users": 1000 }
-  statisticsContent  Int?                                   // JSON string for key/value pairs
-  siteInfoLabel      String?                                   // Site launch/details
-  siteInfoContent    Int?                                   // Additional information
+  id                 Int     @id @default(autoincrement())
+  BannerUrl          String                // Large banner image
+  description        String                // Introductory paragraph
+  overviewLabel      String?
+  overviewContent    Int?               // long text for the overview
+  statisticsLabel    String?
+  statisticsContent  Int?                 // JSON for key/value metrics (Postgres Json)
+  siteInfoLabel      String?
+  siteInfoContent    Int?               // text about site launch/details
 }
 
 /// Creator support links
