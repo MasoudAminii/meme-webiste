@@ -4,7 +4,7 @@
   --primary: #ffffff;
   --primary-40: #f5f7fa;
   --secondary: #171717;
-  --accnet: #4f46e5;
+  --accent: #4f46e5;
   --light-dark: #6a6f6a;
   --light-white: rgba(0 0 0 /15%);
   --gradient-2: linear-gradient(90deg, #ffffff 0%, #ffffff 100%);
@@ -29,7 +29,7 @@
   --primary: #ffffff;
   --primary-40: #0f172a;
   --secondary: #ffffff;
-  --accnet: #d4a8ff;
+  --accent: #d4a8ff;
   --light-dark: #d7d7d7;
   --light-white: rgb(255 255 255 / 15%);
   --gradient-2: linear-gradient(180deg, #475569c8 0%, #3341559a 100%);
@@ -396,7 +396,6 @@ h6 {
   -ms-transform: translateY(-50%);
   transform: translateY(-50%);
 }
-
 
 /* 
 .no-scrollbar {
