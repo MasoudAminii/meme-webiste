@@ -3,6 +3,7 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 /* ----------------------- Icon components ----------------------- */ const HeartIcon =
   ({ size = 28, filled = false }: any) => (
@@ -81,7 +82,7 @@ const PlayPauseIcon = ({ isPlaying = false, size = 24 }: any) => (
 type ReelsCardProps = {
   src: string;
   isVideo?: boolean;
-  poster?: string;
+  poster?: string | null; // Add | null here
   initialLikes?: number;
   initialViews?: number;
   caption?: string;
@@ -90,7 +91,6 @@ type ReelsCardProps = {
   onNext?: () => void;
   onPrev?: () => void;
 };
-
 /* ----------------------- Helper: format seconds to mm:ss ----------------------- */
 const formatTime = (s: number) => {
   if (!isFinite(s) || s <= 0) return "0:00";
@@ -392,7 +392,7 @@ export default function ReelsCard({
         <video
           ref={videoRef}
           src={src}
-          poster={poster}
+          poster={poster ?? undefined} // Convert null to undefined
           loop
           playsInline
           preload="metadata"
@@ -438,8 +438,42 @@ export default function ReelsCard({
         )}
       </AnimatePresence>
 
+      {isVideo && !isPlaying && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePlayPause();
+            }}
+            className="group pointer-events-auto relative flex h-20 w-20 cursor-pointer items-center justify-center rounded-full border-2 border-white/30 bg-black/60 shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-110 hover:border-white/50 hover:bg-black/80"
+            aria-label="play"
+          >
+            <PlayPauseIcon isPlaying={false} size={36} />
+          </button>
+        </div>
+      )}
+
       {/* Top controls */}
-      <div className="absolute top-6 right-4 left-4 z-20 flex items-center justify-between md:right-6 md:left-6">
+      <div className="absolute top-6 right-4 left-4 z-20 flex flex-row-reverse items-center justify-between md:right-6 md:left-6 lg:justify-end">
+        {/* Left side - Return button */}
+        <Link
+          href="/"
+          className="group relative flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border border-white/30 bg-black/50 shadow-xl backdrop-blur-md transition-all duration-300 hover:border-white/50 hover:bg-black/70 lg:hidden"
+          aria-label="return to home"
+        >
+          <div className="absolute inset-0 rounded-full bg-white/10" />
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M19 12H5M5 12L12 19M5 12L12 5"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </Link>
+
+        {/* Right side - Mute and views */}
         <div className="flex gap-3">
           <button
             onClick={() => {
@@ -489,24 +523,7 @@ export default function ReelsCard({
             <span className="font-bold tracking-wide text-white">{views}</span>
           </div>
         </div>
-
-        {/* Play/Pause */}
-        {isVideo && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              togglePlayPause();
-            }}
-            className="group relative flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-black/60 shadow-2xl backdrop-blur-md transition-all duration-300 hover:border-cyan-300/70 hover:bg-black/80"
-            aria-label={isPlaying ? "pause" : "play"}
-          >
-            <div className="absolute inset-0 rounded-full bg-transparent" />
-            <PlayPauseIcon isPlaying={isPlaying} size={26} />
-            <div className="absolute inset-0 rounded-full border-2 border-transparent" />
-          </button>
-        )}
       </div>
-
       {/* Action column */}
       <div className="absolute bottom-24 left-4 z-20 flex flex-col items-center gap-5 md:left-6">
         <button
@@ -579,42 +596,6 @@ export default function ReelsCard({
           )}
         </button>
       </div>
-
-      {/* Description */}
-      {/* {(caption || author) && (
-        <div className="absolute right-4 bottom-32 z-20 max-w-xs md:right-6">
-          <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/60 p-5">
-            <div className="relative">
-              {author && (
-                <div className="mb-3 flex items-center gap-3">
-                  <div className="relative">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-700/40 text-lg font-bold text-white shadow-lg">
-                      {author.charAt(0).toUpperCase()}
-                      <div className="absolute inset-0 rounded-full border-2 border-transparent" />
-                    </div>
-                  </div>
-                  <div>
-                    <span className="block text-lg font-bold tracking-wide text-white drop-shadow-lg">
-                      {author}
-                    </span>
-                    <span className="text-xs font-medium text-white/70">
-                      Content Creator
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {caption && (
-                <div>
-                  <p className="text-sm leading-relaxed font-medium text-white/95">
-                    {caption}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )} */}
 
       {isVideo && (
         <div

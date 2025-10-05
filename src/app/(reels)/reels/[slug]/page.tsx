@@ -47,8 +47,10 @@ export default async function Page({
 
   // Fetch a set of reels (adjust order / limit as you want)
   const reels = await prisma.mediaItem.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 50, // adjust as needed
+    where: {
+      src: { not: null },
+      slug: { not: null },
+    },
     select: {
       id: true,
       slug: true,
@@ -72,12 +74,12 @@ export default async function Page({
   // remove items with null src before mapping
   const validReels = reels.filter((r) => !!r.src);
 
-  const allPosts = validReels.map((r) => ({
+  const allPosts = reels.map((r) => ({
     id: r.id,
-    slug: r.slug,
-    src: r.src!, // safe because filtered
+    slug: r.slug!,
+    src: r.src!,
     isVideo: r.src!.toLowerCase().endsWith(".mp4"),
-    poster: undefined,
+    poster: null, // Change from undefined to null (or remove this line entirely)
     initialLikes: r.likes ?? 0,
     initialViews: r.views ?? 0,
     caption: r.description ?? "",

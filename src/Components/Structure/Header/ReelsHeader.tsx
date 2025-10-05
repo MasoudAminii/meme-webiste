@@ -39,11 +39,12 @@ const ReelsHeader = () => {
   return (
     <>
       <nav
-        className="bg-bg-gradient-2 sticky top-8 z-50 flex max-w-[367px] min-w-[367px] flex-col justify-between gap-8 rounded-[20px] p-8 shadow-2xl max-lg:hidden"
+        className="sticky top-8 z-50 flex max-w-[367px] min-w-[367px] flex-col justify-between gap-8 rounded-[20px] p-8 shadow-2xl max-lg:hidden"
         style={{
           height: "clamp(600px, calc(100vh - 4rem), 958px)",
           minHeight: "768px",
           maxHeight: "958px",
+          backgroundImage: "var(--gradient-2)",
         }}
       >
         <div className="header-top flex max-w-[250px] flex-shrink-0 flex-col justify-between">

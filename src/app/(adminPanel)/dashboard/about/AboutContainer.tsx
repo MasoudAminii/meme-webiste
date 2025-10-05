@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useActionState } from "react";
 import Image from "next/image";
 import {
   Save,
@@ -14,8 +14,11 @@ import {
   Image as ImageIcon,
   CheckCircle,
   Upload,
+  RefreshCw,
+  X,
 } from "lucide-react";
 import imageCompression from "browser-image-compression";
+import { UpdateAboutInfo } from "@/actions/aboutActions";
 
 type AboutData = {
   id: number;
@@ -27,7 +30,17 @@ type AboutData = {
   statisticsContent: number | null;
   siteInfoLabel: string;
   siteInfoContent: number | null;
+  contactAdminLabel: string;
+  contactAdminUrl: string;
+  financialSupportLabel: string;
+  financialSupportUrl: string;
 };
+
+type ActionState = {
+  success?: boolean;
+  error?: string;
+  message?: string;
+} | null;
 
 export default function AboutContainer({ data }: { data: AboutData | null }) {
   const [aboutData, setAboutData] = useState<AboutData>({
@@ -40,6 +53,10 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
     statisticsContent: data?.statisticsContent ?? 1728,
     siteInfoLabel: data?.siteInfoLabel ?? "کاربران فعال",
     siteInfoContent: data?.siteInfoContent ?? 716,
+    contactAdminLabel: data?.contactAdminLabel ?? "ارتباط با ادمین",
+    contactAdminUrl: data?.contactAdminUrl ?? "#",
+    financialSupportLabel: data?.financialSupportLabel ?? "حمایت مالی",
+    financialSupportUrl: data?.financialSupportUrl ?? "#",
   });
 
   const [activeTab, setActiveTab] = useState<"preview" | "edit">("preview");
@@ -51,6 +68,14 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [state, formAction, pending] = useActionState<ActionState, FormData>(
+    UpdateAboutInfo,
+    null,
+  );
+  const [showNotification, setShowNotification] = useState(false);
+
+  // Textarea ref for enhanced functionality
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const maxSizeMB = 2;
 
@@ -61,6 +86,76 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
       setError(null);
     }
   }, [aboutData.BannerUrl]);
+
+  // Auto-resize textarea based on content
+  const autoResizeTextarea = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height =
+        textareaRef.current.scrollHeight + "px";
+    }
+  };
+
+  // Handle textarea changes with auto-resize
+  const handleDescriptionChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    setAboutData((p) => ({
+      ...p,
+      description: e.target.value || null,
+    }));
+
+    // Auto-resize after state update
+    setTimeout(autoResizeTextarea, 0);
+  };
+
+  // Handle key events for enhanced word-like behavior
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Allow natural Enter behavior for line breaks
+    if (e.key === "Enter") {
+      // Let the default behavior happen (creates new line)
+      return;
+    }
+
+    // Handle Tab for indentation (optional enhancement)
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const textarea = e.currentTarget;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+
+      // Insert tab character
+      const newValue =
+        textarea.value.substring(0, start) +
+        "\t" +
+        textarea.value.substring(end);
+
+      setAboutData((p) => ({
+        ...p,
+        description: newValue,
+      }));
+
+      // Set cursor position after tab
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + 1;
+        autoResizeTextarea();
+      }, 0);
+    }
+  };
+
+  // Format description for display (preserve line breaks)
+  const formatDescriptionForDisplay = (text: string | null) => {
+    if (!text)
+      return "میم‌های شیعه یک پلتفرم آنلاین است که به ارائه میم‌های مذهبی و طنز شیعی می‌پردازد. هدف ما ایجاد فضایی سرگرم‌کننده و آموزنده برای کاربران است تا از طریق میم‌ها با مفاهیم دینی آشنا شوند و لحظاتی شاد را تجربه کنند.";
+
+    // Split by line breaks and render as paragraphs
+    return text.split("\n").map((paragraph, index) => (
+      <span key={index}>
+        {paragraph}
+        {index < text.split("\n").length - 1 && <br />}
+      </span>
+    ));
+  };
 
   const isDataUrl = (url: string | null) => !!url && url.startsWith("data:");
 
@@ -170,6 +265,34 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
     setActiveTab("preview");
   };
 
+  // Auto-resize textarea on component mount and data changes
+  useEffect(() => {
+    autoResizeTextarea();
+  }, [aboutData.description]);
+
+  useEffect(() => {
+    if (state?.success) {
+      console.log("Success:", state.message);
+      setActiveTab("preview");
+      setError(null);
+      setShowNotification(true);
+    }
+    if (state?.error) {
+      console.error("Error:", state.error);
+      setError(state.error);
+      setShowNotification(true);
+    }
+  }, [state]);
+
+  useEffect(() => {
+    if (showNotification && (state?.success || state?.error)) {
+      const timer = setTimeout(() => {
+        setShowNotification(false);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [showNotification, state]);
+
   return (
     <>
       {/* Tabs */}
@@ -182,7 +305,7 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
               : "text-gray-500 hover:bg-gray-50"
           }`}
         >
-          <Eye size={16} /> پیش‌نمایش
+          <Eye size={16} /> پیش‌ نمایش
         </button>
         <button
           onClick={() => setActiveTab("edit")}
@@ -199,7 +322,7 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
       {/* PREVIEW */}
       {activeTab === "preview" && (
         <div className="space-y-6">
-          <div className="overflow-hidden rounded-[20px] bg-white shadow-sm">
+          <div className="overflow-hidden rounded-[20px] shadow-sm">
             <div className="relative">
               {aboutData.BannerUrl ? (
                 isDataUrl(aboutData.BannerUrl) ? (
@@ -207,7 +330,7 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
                   <img
                     src={aboutData.BannerUrl}
                     alt="بنر"
-                    className="h-64 w-full object-cover sm:h-80"
+                    className="w-full object-contain"
                   />
                 ) : (
                   <Image
@@ -223,17 +346,16 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
                       height: "auto",
                       objectFit: "contain",
                     }}
-                    className="h-64 sm:h-80"
                   />
                 )
               ) : (
-                <div className="flex h-64 items-center justify-center bg-gradient-to-r from-indigo-500 to-purple-600 text-white sm:h-80">
-                  <div className="text-center">
+                <div className="bg-bg-1 flex h-64 items-center justify-center sm:h-80">
+                  <div className="flex flex-col items-center justify-center text-center">
                     <ImageIcon size={40} />
                     <h2 className="mt-2 text-2xl font-semibold">
                       بنری موجود نیست
                     </h2>
-                    <p className="mt-1 text-sm opacity-90">
+                    <p className="mt-1 text-sm text-white opacity-90">
                       لطفا بنری بارگذاری کنید تا در اینجا نمایش داده شود.
                     </p>
                   </div>
@@ -244,7 +366,7 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
               <div className="absolute top-3 left-3 flex items-center gap-2">
                 <button
                   onClick={() => setActiveTab("edit")}
-                  className="flex items-center gap-2 rounded-md bg-white/90 px-3 py-1 text-sm shadow"
+                  className="bg-primary-40 flex cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-sm shadow"
                 >
                   <Edit3 size={16} /> ویرایش بنر
                 </button>
@@ -252,7 +374,7 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
                   <button
                     onClick={removeBanner}
                     title="حذف بنر"
-                    className="rounded-md bg-white/90 p-2 shadow"
+                    className="bg-primary-40 rounded-md p-2 shadow"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -263,10 +385,9 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
 
           <div className="description mb-6">
             <h1 className="text-3xl font-extrabold sm:text-4xl">درباره ما</h1>
-            <p className="mt-4 text-base leading-relaxed font-normal sm:text-lg">
-              {aboutData?.description ??
-                "میم‌های شیعه یک پلتفرم آنلاین است که به ارائه میم‌های مذهبی و طنز شیعی می‌پردازد. هدف ما ایجاد فضایی سرگرم‌کننده و آموزنده برای کاربران است تا از طریق میم‌ها با مفاهیم دینی آشنا شوند و لحظاتی شاد را تجربه کنند."}
-            </p>
+            <div className="mt-4 text-base leading-relaxed font-normal whitespace-pre-wrap sm:text-lg">
+              {formatDescriptionForDisplay(aboutData?.description)}
+            </div>
           </div>
 
           {/* Content Grid */}
@@ -324,7 +445,7 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
                 <p className="text-light-dark mt-2 text-sm">
                   اعداد متناظر با داده‌ی ورودی شما
                 </p>
-            </div>
+              </div>
             </div>
           </div>
         </div>
@@ -332,359 +453,511 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
 
       {/* EDIT */}
       {activeTab === "edit" && (
-        <div className="space-y-8">
-          <div className="bg-bg-1 rounded-lg p-8 shadow-sm">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="rounded-lg bg-blue-100 p-3">
-                <ImageIcon size={24} className="text-blue-700" />
+        <div>
+          <form className="space-y-8" action={formAction}>
+            <div className="bg-bg-1 rounded-lg p-8 shadow-sm">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="rounded-lg bg-blue-100 p-3">
+                  <ImageIcon size={24} className="text-blue-700" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">بنر و توضیحات</h3>
+                  <p className="text-light-dark mt-1 text-sm">
+                    بنر و توضیحات صفحه درباره ما را مدیریت کنید
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-bold">بنر و توضیحات</h3>
-                <p className="text-light-dark mt-1 text-sm">
-                  بنر و توضیحات صفحه درباره ما را مدیریت کنید
-                </p>
-              </div>
-            </div>
-            <div className="space-y-6">
-              <label className="text-light-dark mb-3 block text-base font-semibold">
-                تصویر بنر
-              </label>
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Upload Section */}
-                <div className="image-upload w-full">
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
+              <div className="space-y-6">
+                <label className="text-light-dark mb-3 block text-base font-semibold">
+                  تصویر بنر
+                </label>
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Upload Section */}
+                  <div className="image-upload w-full">
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      name="banner"
+                      disabled={pending}
+                    />
 
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={openFileDialog}
-                    onDrop={handleDrop}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    aria-label="بارگذاری بنر"
-                    className={`group relative h-full cursor-pointer overflow-hidden rounded-xl border-2 transition-all duration-300 select-none ${
-                      dragActive
-                        ? "border-light-dark bg-bg-1 scale-[1.02] shadow-lg"
-                        : "bg-bg-1 border-light-dark hover:border-accent hover:bg-accent/10 border-dashed"
-                    }`}
-                  >
-                    <div className="h-full p-4 md:p-8">
-                      <div className="flex h-full flex-col items-center justify-center text-center">
-                        <div
-                          className={`mb-3 rounded-full p-3 transition-all duration-300 md:mb-4 md:p-4 ${
-                            dragActive
-                              ? "scale-110 bg-indigo-100"
-                              : "bg-gray-100 group-hover:scale-105 group-hover:bg-indigo-100"
-                          }`}
-                        >
-                          <UploadCloud
-                            size={32}
-                            className={`transition-colors duration-300 ${
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={openFileDialog}
+                      onDrop={handleDrop}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      aria-label="بارگذاری بنر"
+                      className={`group relative h-full cursor-pointer overflow-hidden rounded-xl border-2 transition-all duration-300 select-none ${
+                        dragActive
+                          ? "border-light-dark bg-bg-1 scale-[1.02] shadow-lg"
+                          : "bg-bg-1 border-light-dark hover:border-accent hover:bg-accent/10 border-dashed"
+                      }`}
+                    >
+                      <div className="h-full p-4 md:p-8">
+                        <div className="flex h-full flex-col items-center justify-center text-center">
+                          <div
+                            className={`mb-3 rounded-full p-3 transition-all duration-300 md:mb-4 md:p-4 ${
                               dragActive
-                                ? "text-indigo-600"
-                                : "text-gray-500 group-hover:text-indigo-600"
+                                ? "scale-110 bg-indigo-100"
+                                : "bg-gray-100 group-hover:scale-105 group-hover:bg-indigo-100"
                             }`}
-                          />
-                        </div>
+                          >
+                            <UploadCloud
+                              size={32}
+                              className={`transition-colors duration-300 ${
+                                dragActive
+                                  ? "text-indigo-600"
+                                  : "text-gray-500 group-hover:text-indigo-600"
+                              }`}
+                            />
+                          </div>
 
-                        <div className="space-y-1 md:space-y-2">
-                          <h4 className="text-base font-semibold md:text-lg">
-                            {dragActive
-                              ? "فایل را رها کنید"
-                              : "تصویر بنر را انتخاب کنید"}
-                          </h4>
-                          <p className="text-light-dark text-xs md:text-sm">
-                            فایل را بکشید و رها کنید یا برای انتخاب کلیک کنید
-                          </p>
-                          <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-[10px] md:mt-3 md:text-xs">
-                            <span className="bg-primary-40 rounded-full border px-2 py-1">
-                              حداکثر {maxSizeMB}MB
-                            </span>
-                            <span className="bg-primary-40 rounded-full border px-2 py-1">
-                              1200×400 پیشنهادی
-                            </span>
+                          <div className="space-y-1 md:space-y-2">
+                            <h4 className="text-base font-semibold md:text-lg">
+                              {dragActive
+                                ? "فایل را رها کنید"
+                                : "تصویر بنر را انتخاب کنید"}
+                            </h4>
+                            <p className="text-light-dark text-xs md:text-sm">
+                              فایل را بکشید و رها کنید یا برای انتخاب کلیک کنید
+                            </p>
+                            <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-[10px] md:mt-3 md:text-xs">
+                              <span className="bg-primary-40 rounded-full border px-2 py-1">
+                                حداکثر {maxSizeMB}MB
+                              </span>
+                              <span className="bg-primary-40 rounded-full border px-2 py-1">
+                                1200×400 پیشنهادی
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
+
+                      {/* Hover gradient */}
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-indigo-500/0 to-purple-500/0 transition-all duration-300 group-hover:from-indigo-500/5 group-hover:to-purple-500/5" />
                     </div>
 
-                    {/* Hover gradient */}
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-indigo-500/0 to-purple-500/0 transition-all duration-300 group-hover:from-indigo-500/5 group-hover:to-purple-500/5" />
+                    {error && (
+                      <div className="mt-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 md:mt-4 md:gap-3 md:px-4 md:py-3 md:text-sm">
+                        <div className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-red-100 md:h-5 md:w-5">
+                          <div className="h-1.5 w-1.5 rounded-full bg-red-600 md:h-2 md:w-2"></div>
+                        </div>
+                        <span>{error}</span>
+                      </div>
+                    )}
                   </div>
 
-                  {error && (
-                    <div className="mt-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 md:mt-4 md:gap-3 md:px-4 md:py-3 md:text-sm">
-                      <div className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-red-100 md:h-5 md:w-5">
-                        <div className="h-1.5 w-1.5 rounded-full bg-red-600 md:h-2 md:w-2"></div>
-                      </div>
-                      <span>{error}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Preview Section */}
-                {aboutData.BannerUrl && (
-                  <div className="bg-primary-40 w-full rounded-xl p-4 shadow-sm md:p-6">
-                    <div className="flex flex-col gap-4 md:gap-6">
-                      <div className="relative overflow-hidden rounded-lg shadow-md">
-                        {isDataUrl(aboutData.BannerUrl) ? (
-                          <img
-                            src={aboutData.BannerUrl}
-                            alt="preview"
-                            className="max-h-60 w-full object-contain md:max-h-80"
-                          />
-                        ) : (
-                          <Image
-                            src={`/banner/${aboutData.BannerUrl}`}
-                            alt="preview"
-                            width={400}
-                            height={200}
-                            unoptimized
-                            className="max-h-60 w-full object-cover md:max-h-80"
-                          />
-                        )}
-                        {uploading && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                            <div className="bg-bg-1 flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium md:px-4 md:py-2 md:text-sm">
-                              <div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent"></div>
-                              در حال پردازش...
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-2 md:mb-4">
-                          <h4 className="mb-1 text-sm font-semibold md:text-base">
-                            بنر انتخاب شده
-                          </h4>
-                          <p className="text-light-dark text-xs md:text-sm">
-                            پیش‌نمایش محلی - تغییرات پس از ذخیره اعمال می‌شود
-                          </p>
-                        </div>
-
-                        {/* Progress */}
-                        {(uploading || progress > 0) && (
-                          <div className="mb-3 md:mb-4">
-                            <div className="mb-1 flex items-center justify-between md:mb-2">
-                              <span className="text-xs md:text-sm">
-                                {uploading
-                                  ? "در حال بارگذاری..."
-                                  : "آپلود کامل شد"}
-                              </span>
-                              <span className="text-xs font-medium md:text-sm">
-                                {progress}%
-                              </span>
-                            </div>
-                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 md:h-2">
-                              <div
-                                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-300 ease-out"
-                                style={{ width: `${progress}%` }}
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Action Buttons */}
-                        <div className="flex flex-col items-stretch gap-2 md:flex-row md:items-center md:gap-3">
-                          <button
-                            onClick={openFileDialog}
-                            className="border-light-dark flex cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors md:px-4 md:text-sm"
-                          >
-                            <Upload size={14} />
-                            تغییر تصویر
-                          </button>
-                          <button
-                            onClick={removeBanner}
-                            className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 md:px-4 md:text-sm"
-                          >
-                            <Trash2 size={14} />
-                            حذف
-                          </button>
-
-                          {progress === 100 && !uploading && (
-                            <div className="flex items-center gap-2 text-xs font-medium text-green-700 md:ml-auto md:text-sm">
-                              <CheckCircle size={16} />
-                              آماده برای ذخیره
+                  {/* Preview Section */}
+                  {aboutData.BannerUrl && (
+                    <div className="bg-primary-40 w-full rounded-xl p-4 shadow-sm md:p-6">
+                      <div className="flex flex-col gap-4 md:gap-6">
+                        <div className="relative overflow-hidden rounded-lg shadow-md">
+                          {isDataUrl(aboutData.BannerUrl) ? (
+                            <img
+                              src={aboutData.BannerUrl}
+                              alt="preview"
+                              className="max-h-60 w-full object-contain md:max-h-80"
+                            />
+                          ) : (
+                            <Image
+                              src={`/banner/${aboutData.BannerUrl}`}
+                              alt="preview"
+                              width={400}
+                              height={200}
+                              unoptimized
+                              className="max-h-60 w-full object-cover md:max-h-80"
+                            />
+                          )}
+                          {uploading && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                              <div className="bg-bg-1 flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium md:px-4 md:py-2 md:text-sm">
+                                <div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent"></div>
+                                در حال پردازش...
+                              </div>
                             </div>
                           )}
                         </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2 md:mb-4">
+                            <h4 className="mb-1 text-sm font-semibold md:text-base">
+                              بنر انتخاب شده
+                            </h4>
+                            <p className="text-light-dark text-xs md:text-sm">
+                              پیش‌نمایش محلی - تغییرات پس از ذخیره اعمال می‌شود
+                            </p>
+                          </div>
+
+                          {/* Progress */}
+                          {(uploading || progress > 0) && (
+                            <div className="mb-3 md:mb-4">
+                              <div className="mb-1 flex items-center justify-between md:mb-2">
+                                <span className="text-xs md:text-sm">
+                                  {uploading
+                                    ? "در حال بارگذاری..."
+                                    : "آپلود کامل شد"}
+                                </span>
+                                <span className="text-xs font-medium md:text-sm">
+                                  {progress}%
+                                </span>
+                              </div>
+                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 md:h-2">
+                                <div
+                                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-300 ease-out"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Action Buttons */}
+                          <div className="flex flex-col items-stretch gap-2 md:flex-row md:items-center md:gap-3">
+                            <button
+                              onClick={() => !pending && openFileDialog()}
+                              disabled={pending}
+                              className="border-light-dark flex cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors md:px-4 md:text-sm"
+                            >
+                              <Upload size={14} />
+                              تغییر تصویر
+                            </button>
+
+                            <button
+                              onClick={() => !pending && removeBanner()}
+                              disabled={pending}
+                              className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 md:px-4 md:text-sm"
+                            >
+                              <Trash2 size={14} />
+                              حذف
+                            </button>
+
+                            {progress === 100 && !uploading && (
+                              <div className="flex items-center gap-2 text-xs font-medium text-green-700 md:ml-auto md:text-sm">
+                                <CheckCircle size={16} />
+                                آماده برای ذخیره
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-bg-1 rounded-lg p-8 shadow-sm">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="rounded-lg bg-green-50 p-2">
-                <FileText size={20} className="text-green-600" />
-              </div>
-              <h3 className="text-lg font-semibold">متن توضیحات</h3>
-            </div>
-            <textarea
-              rows={8}
-              value={aboutData.description ?? ""}
-              onChange={(e) =>
-                setAboutData((p) => ({
-                  ...p,
-                  description: e.target.value || null,
-                }))
-              }
-              placeholder="توضیحات مربوط به صفحه درباره ما را وارد کنید..."
-              className="border-light-dark w-full resize-none rounded-lg border px-4 py-3 text-sm transition-all focus:ring-2 focus:ring-indigo-100 focus:outline-none"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Overview */}
-            <div className="bg-bg-1 rounded-lg p-6 shadow-sm">
-              <div className="flex items-center gap-3">
+            <div className="bg-bg-1 rounded-lg p-8 shadow-sm">
+              <div className="mb-4 flex items-center gap-3">
                 <div className="rounded-lg bg-green-50 p-2">
                   <FileText size={20} className="text-green-600" />
                 </div>
-                <h3 className="text-lg font-semibold">نمای کلی</h3>
+                <h3 className="text-lg font-semibold">متن توضیحات</h3>
               </div>
-
-              <div className="mt-4">
-                <label className="text-light-dark mb-2 block text-base font-medium">
-                  عنوان
-                </label>
-                <input
-                  value={aboutData.overviewLabel}
-                  onChange={(e) =>
-                    setAboutData((p) => ({
-                      ...p,
-                      overviewLabel: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-md border px-3 py-2"
-                />
-
-                <label className="text-light-dark mt-3 mb-2 block text-base font-medium">
-                  محتوا (نوع وارد شده حفظ می‌شود)
-                </label>
-                <input
-                  value={aboutData.overviewContent ?? ""}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setAboutData((p) => ({
-                      ...p,
-                      overviewContent: v === "" ? null : Number(v),
-                    }));
+              <div className="space-y-2">
+                <textarea
+                  ref={textareaRef}
+                  value={aboutData.description ?? ""}
+                  onChange={handleDescriptionChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder="..."
+                  className={`border-light-dark min-h-[200px] w-full resize-none rounded-lg border px-4 py-3 text-sm leading-relaxed transition-all focus:ring-2 focus:ring-indigo-100 focus:outline-none ${
+                    pending ? "opacity-60" : ""
+                  }`}
+                  style={{
+                    lineHeight: "1.6",
+                    whiteSpace: "pre-wrap",
+                    overflowWrap: "break-word",
                   }}
-                  type="number"
-                  className="w-full rounded-md border px-3 py-2"
+                  name="description"
+                  disabled={pending}
                 />
+                <p className="text-xs text-gray-500">
+                  نکته: برای ایجاد خط جدید Enter بزنید، برای تب از Tab استفاده
+                  کنید
+                </p>
               </div>
             </div>
 
-            {/* Statistics */}
-            <div className="bg-bg-1 rounded-lg p-6 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-purple-50 p-2">
-                  <BarChart3 size={20} className="text-purple-600" />
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {/* Overview */}
+              <div className="bg-bg-1 rounded-lg p-6 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-green-50 p-2">
+                    <FileText size={20} className="text-green-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold">نمای کلی</h3>
                 </div>
-                <h3 className="text-lg font-semibold">آمار</h3>
-              </div>
 
-              <div className="mt-4">
-                <label className="text-light-dark mb-2 block text-base font-medium">
-                  عنوان
-                </label>
-                <input
-                  value={aboutData.statisticsLabel}
-                  onChange={(e) =>
-                    setAboutData((p) => ({
-                      ...p,
-                      statisticsLabel: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-md border px-3 py-2"
-                />
-                <label className="text-light-dark mt-3 mb-2 block text-base font-medium">
-                  محتوا (شما عدد وارد کردید)
-                </label>
-                <input
-                  value={aboutData.statisticsContent ?? ""}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setAboutData((p) => ({
-                      ...p,
-                      statisticsContent: v === "" ? null : Number(v),
-                    }));
-                  }}
-                  type="number"
-                  className="w-full rounded-md border px-3 py-2"
-                />
-              </div>
-            </div>
+                <div className="mt-4">
+                  <label className="text-light-dark mb-2 block text-base font-medium">
+                    عنوان
+                  </label>
+                  <input
+                    value={aboutData.overviewLabel}
+                    onChange={(e) =>
+                      setAboutData((p) => ({
+                        ...p,
+                        overviewLabel: e.target.value,
+                      }))
+                    }
+                    className={`w-full rounded-md border px-3 py-2 ${pending ? "opacity-60" : ""}`}
+                    name="overviewLabel"
+                    disabled={pending}
+                  />
 
-            {/* Site Info */}
-            <div className="bg-bg-1 rounded-lg p-6 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-orange-50 p-2">
-                  <Info size={20} className="text-orange-600" />
+                  <label className="text-light-dark mt-3 mb-2 block text-base font-medium">
+                    محتوا (نوع وارد شده حفظ می‌شود)
+                  </label>
+                  <input
+                    value={aboutData.overviewContent ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setAboutData((p) => ({
+                        ...p,
+                        overviewContent: v === "" ? null : Number(v),
+                      }));
+                    }}
+                    type="number"
+                    className={`w-full rounded-md border px-3 py-2 ${pending ? "opacity-60" : ""}`}
+                    name="overviewContent"
+                    disabled={pending}
+                  />
                 </div>
-                <h3 className="text-lg font-semibold">اطلاعات سایت</h3>
               </div>
 
-              <div className="mt-4">
-                <label className="text-light-dark mb-2 block text-base font-medium">
-                  عنوان
-                </label>
-                <input
-                  value={aboutData.siteInfoLabel}
-                  onChange={(e) =>
-                    setAboutData((p) => ({
-                      ...p,
-                      siteInfoLabel: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-md border px-3 py-2"
-                />
-                <label className="text-light-dark mt-3 mb-2 block text-base font-medium">
-                  محتوا (شما عدد وارد کردید)
-                </label>
-                <input
-                  value={aboutData.siteInfoContent ?? ""}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setAboutData((p) => ({
-                      ...p,
-                      siteInfoContent: v === "" ? null : Number(v),
-                    }));
-                  }}
-                  type="number"
-                  className="w-full rounded-md border px-3 py-2"
-                />
+              {/* Statistics */}
+              <div className="bg-bg-1 rounded-lg p-6 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-purple-50 p-2">
+                    <BarChart3 size={20} className="text-purple-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold">آمار</h3>
+                </div>
+
+                <div className="mt-4">
+                  <label className="text-light-dark mb-2 block text-base font-medium">
+                    عنوان
+                  </label>
+                  <input
+                    value={aboutData.statisticsLabel}
+                    onChange={(e) =>
+                      setAboutData((p) => ({
+                        ...p,
+                        statisticsLabel: e.target.value,
+                      }))
+                    }
+                    className={`w-full rounded-md border px-3 py-2 ${pending ? "opacity-60" : ""}`}
+                    name="statisticsLabel"
+                    disabled={pending}
+                  />
+                  <label className="text-light-dark mt-3 mb-2 block text-base font-medium">
+                    محتوا (شما عدد وارد کردید)
+                  </label>
+                  <input
+                    value={aboutData.statisticsContent ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setAboutData((p) => ({
+                        ...p,
+                        statisticsContent: v === "" ? null : Number(v),
+                      }));
+                    }}
+                    type="number"
+                    className={`w-full rounded-md border px-3 py-2 ${pending ? "opacity-60" : ""}`}
+                    name="statisticsContent"
+                    disabled={pending}
+                  />
+                </div>
+              </div>
+
+              {/* Site Info */}
+              <div className="bg-bg-1 rounded-lg p-6 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-orange-50 p-2">
+                    <Info size={20} className="text-orange-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold">اطلاعات سایت</h3>
+                </div>
+
+                <div className="mt-4">
+                  <label className="text-light-dark mb-2 block text-base font-medium">
+                    عنوان
+                  </label>
+                  <input
+                    value={aboutData.siteInfoLabel}
+                    onChange={(e) =>
+                      setAboutData((p) => ({
+                        ...p,
+                        siteInfoLabel: e.target.value,
+                      }))
+                    }
+                    className={`w-full rounded-md border px-3 py-2 ${pending ? "opacity-60" : ""}`}
+                    name="siteInfoLabel"
+                    disabled={pending}
+                  />
+                  <label className="text-light-dark mt-3 mb-2 block text-base font-medium">
+                    محتوا (شما عدد وارد کردید)
+                  </label>
+                  <input
+                    value={aboutData.siteInfoContent ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setAboutData((p) => ({
+                        ...p,
+                        siteInfoContent: v === "" ? null : Number(v),
+                      }));
+                    }}
+                    type="number"
+                    className={`w-full rounded-md border px-3 py-2 ${pending ? "opacity-60" : ""}`}
+                    name="siteInfoContent"
+                    disabled={pending}
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="submit-button flex gap-2">
+            <div className="bg-bg-1 rounded-lg p-6 shadow-sm lg:col-span-2">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="rounded-lg bg-blue-50 p-2">
+                  <Info size={20} className="text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold">دکمه‌های ارتباطی</h3>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                {/* Contact Admin */}
+                <div>
+                  <label className="text-light-dark mb-2 block text-base font-medium">
+                    متن دکمه ارتباط
+                  </label>
+                  <input
+                    value={aboutData.contactAdminLabel}
+                    onChange={(e) =>
+                      setAboutData((p) => ({
+                        ...p,
+                        contactAdminLabel: e.target.value,
+                      }))
+                    }
+                    className={`w-full rounded-md border px-3 py-2 ${pending ? "opacity-60" : ""}`}
+                    name="contactAdminLabel"
+                    disabled={pending}
+                  />
+
+                  <label className="text-light-dark mt-3 mb-2 block text-base font-medium">
+                    لینک ارتباط
+                  </label>
+                  <input
+                    value={aboutData.contactAdminUrl}
+                    onChange={(e) =>
+                      setAboutData((p) => ({
+                        ...p,
+                        contactAdminUrl: e.target.value,
+                      }))
+                    }
+                    type="url"
+                    placeholder="https://..."
+                    className={`w-full rounded-md border px-3 py-2 ${pending ? "opacity-60" : ""}`}
+                    name="contactAdminUrl"
+                    disabled={pending}
+                  />
+                </div>
+
+                {/* Financial Support */}
+                <div>
+                  <label className="text-light-dark mb-2 block text-base font-medium">
+                    متن دکمه حمایت مالی
+                  </label>
+                  <input
+                    value={aboutData.financialSupportLabel}
+                    onChange={(e) =>
+                      setAboutData((p) => ({
+                        ...p,
+                        financialSupportLabel: e.target.value,
+                      }))
+                    }
+                    className={`w-full rounded-md border px-3 py-2 ${pending ? "opacity-60" : ""}`}
+                    name="financialSupportLabel"
+                    disabled={pending}
+                  />
+
+                  <label className="text-light-dark mt-3 mb-2 block text-base font-medium">
+                    لینک حمایت مالی
+                  </label>
+                  <input
+                    value={aboutData.financialSupportUrl}
+                    onChange={(e) =>
+                      setAboutData((p) => ({
+                        ...p,
+                        financialSupportUrl: e.target.value,
+                      }))
+                    }
+                    type="url"
+                    placeholder="https://..."
+                    className={`w-full rounded-md border px-3 py-2 ${pending ? "opacity-60" : ""}`}
+                    name="financialSupportUrl"
+                    disabled={pending}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="submit-button flex gap-2">
+              <button
+                type="submit"
+                disabled={pending}
+                aria-busy={pending ? true : undefined}
+                className="flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {/* Icon: spinner while pending, save icon when not pending */}
+                {pending ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <Save className="h-4 w-4" aria-hidden />
+                )}
+
+                {/* Text */}
+                <span>{pending ? "در حال ذخیره..." : "ذخیره"}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showNotification && state?.success && (
+        <div className="animate-in slide-in-from-top-2 fixed top-4 right-4 z-50 rounded-lg border-l-4 border-green-400 bg-green-50 p-4 text-green-800 shadow-lg transition-all duration-300">
+          <div className="flex w-full justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle size={16} />
+              <span>{state.message}</span>
+            </div>
             <button
-              onClick={handleSave}
-              className="flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-white"
+              onClick={() => setShowNotification(false)}
+              className="text-black hover:opacity-70"
             >
-              <Save size={16} /> ذخیره
+              <X className="h-4 w-4" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {showNotification && state?.error && (
+        <div className="animate-in slide-in-from-top-2 fixed top-4 right-4 z-50 rounded-lg border-l-4 border-red-400 bg-red-50 p-4 text-red-800 shadow-lg transition-all duration-300">
+          <div className="flex w-full justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="flex h-4 w-4 items-center justify-center rounded-full bg-red-200">
+                <div className="h-2 w-2 rounded-full bg-red-600"></div>
+              </div>
+              <span>{state.error}</span>
+            </div>
             <button
-              onClick={() => {
-                setIsEditing(false);
-                setActiveTab("preview");
-              }}
-              className="rounded-md border px-4 py-2"
+              onClick={() => setShowNotification(false)}
+              className="text-black hover:opacity-70"
             >
-              انصراف
+              <X className="h-4 w-4" />
             </button>
           </div>
         </div>

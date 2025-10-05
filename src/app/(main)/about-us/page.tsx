@@ -43,10 +43,12 @@ export default async function AboutUs() {
 
       <div className="description mb-6 md:mb-10">
         <h1 className="text-3xl font-extrabold sm:text-4xl">درباره ما</h1>
-        <p className="mt-4 text-base leading-relaxed font-normal sm:text-lg">
-          {data?.description ??
+        <div className="mt-4 text-base leading-relaxed font-normal whitespace-pre-wrap sm:text-lg">
+          {data?.description
+            ?.split("\n")
+            .map((paragraph, index) => <span key={index}>{paragraph}</span>) ??
             "میم‌های شیعه یک پلتفرم آنلاین است که به ارائه میم‌های مذهبی و طنز شیعی می‌پردازد. هدف ما ایجاد فضایی سرگرم‌کننده و آموزنده برای کاربران است تا از طریق میم‌ها با مفاهیم دینی آشنا شوند و لحظاتی شاد را تجربه کنند."}
-        </p>
+        </div>
       </div>
 
       <div className="mb-28 lg:mb-8">
@@ -54,7 +56,7 @@ export default async function AboutUs() {
           {/* Item 1 */}
           <div className="flex flex-1 flex-col items-center justify-center gap-2 border-b border-white/10 py-4 md:border-b-0">
             <p className="text-3xl font-bold sm:text-4xl md:text-5xl">
-              {data.overviewContent}+
+              {data.overviewContent}
             </p>
             <span className="text-base font-semibold sm:text-lg md:text-xl">
               {data.overviewLabel}
@@ -85,15 +87,17 @@ export default async function AboutUs() {
           <div className="flex flex-1 flex-col gap-3 border-white/10 py-4 sm:flex-row sm:justify-center md:flex-col md:items-center md:justify-center md:border-r">
             <a
               className="w-full min-w-[147px] rounded-2xl border border-white px-4 py-3 text-center text-base sm:w-auto sm:text-lg"
-              href="#"
+              href={data.contactAdminUrl ?? "#"}
+              target="_blank"
             >
-              ارتباط با ادمین
+              {data.contactAdminLabel ?? "ارتباط با ادمین"}
             </a>
             <a
               className="w-full min-w-[147px] rounded-2xl border border-white px-4 py-3 text-center text-base sm:w-auto sm:text-lg"
-              href="#"
+              href={data.financialSupportUrl ?? "#"}
+              target="_blank"
             >
-              حمایت مالی
+              {data.financialSupportLabel ?? "حمایت مالی"}
             </a>
           </div>
         </div>

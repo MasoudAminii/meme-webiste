@@ -2,7 +2,7 @@
 import React from "react";
 import Image from "next/image";
 import prisma from "@/lib/db"; // adjust path if needed
-import type { Link as PrismaLink } from "@prisma/client";
+import type { Link } from "@prisma/client";
 import { Suspense } from "react";
 
 function chunkArray<T>(arr: T[], size: number): T[][] {
@@ -26,8 +26,8 @@ function isTailwindBgClass(s: string | null | undefined) {
 
 export default async function Home() {
   // fetch links from your DB
-  const links: PrismaLink[] = await prisma.link.findMany({
-    orderBy: { createdAt: "desc" },
+  const links: Link[] = await prisma.link.findMany({
+    orderBy: { position: "asc" }, // ✅ Add this
   });
 
   // chunk into groups of 6 (matches positionClasses array size)
@@ -54,7 +54,7 @@ export default async function Home() {
         </div>
       </div>
 
-      <div dir="ltr" className="Links mt-4 max-lg:mb-28 md:mt-8">
+      <div dir="ltr" className="Links mt-4 max-lg:mb-28 max-sm:mb-20 md:mt-8">
         <Suspense fallback={<LinksGridSkeleton groups={groups} />}>
           <LinksGrid groups={groups} />
         </Suspense>
@@ -63,7 +63,7 @@ export default async function Home() {
   );
 }
 
-type Groups = PrismaLink[][];
+type Groups = Link[][];
 
 async function LinksGrid({ groups }: { groups: Groups }) {
   // kept the artificial delay you had for testing Suspense
@@ -72,20 +72,11 @@ async function LinksGrid({ groups }: { groups: Groups }) {
       {groups.map((group, gIdx) => (
         <div
           key={gIdx}
-          className="mb-4 grid gap-4 md:mb-6 md:gap-6 lg:grid-cols-2"
+          className="mb-4 grid grid-cols-2 gap-4 max-[375px]:grid-cols-1 md:mb-6 md:gap-6"
         >
           {group.map((link, i) => {
             const base =
-              "Link-Item w-full flex min-h-[120px] gap-6 lg:items-center lg:flex-row flex-col justify-between rounded-3xl p-4 sm:p-6 lg:p-8 lg:py-10";
-            const positionClasses =
-              [
-                "max-lg:col-span-2 max-lg:row-span-1",
-                "max-lg:col-span-1 max-lg:row-span-1",
-                "max-lg:col-span-3 max-lg:row-span-1 max-lg:flex-row items-center",
-                "max-lg:col-span-2 max-lg:row-span-2",
-                "max-lg:col-span-1 max-lg:row-span-1",
-                "max-lg:col-span-1 max-lg:row-span-1",
-              ][i] ?? "";
+              "Link-Item w-full flex sm:min-h-[120px] gap-6 max-[375px]:items-center lg:items-center lg:flex-row max-[375px]:flex-row flex-col justify-between rounded-3xl p-4 sm:p-6 lg:p-8 lg:py-10";
 
             const dbBg = (link?.backgroundCss || "").trim();
             const useTailwindBg = isTailwindBgClass(dbBg);
@@ -108,8 +99,11 @@ async function LinksGrid({ groups }: { groups: Groups }) {
                 href={link.targetUrl || "#"}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`${base} ${positionClasses} ${bgClass}`}
-                style={inlineStyle}
+                className={`${base} ${bgClass}`}
+                style={{
+                  ...inlineStyle, // spread existing styles
+                  boxShadow: "0px 2px 8px rgba(99, 99, 99, 0.2)", // add box shadow
+                }}
               >
                 <div className="image-icon h-16 w-16 flex-shrink-0 md:h-20 md:w-20">
                   <Image
@@ -150,36 +144,23 @@ function LinksGridSkeleton({ groups }: { groups: Groups }) {
       {groups.map((group, gIdx) => (
         <div
           key={gIdx}
-          className="mb-4 grid gap-4 md:mb-6 md:gap-6 lg:grid-cols-2"
+          className="mb-4 grid grid-cols-2 gap-4 max-[375px]:grid-cols-1 md:mb-6 md:gap-6"
         >
           {group.map((_, i) => {
             const base =
-              "Link-Item w-full reletive flex min-h-[120px] bg-gray-200 dark:bg-gray-700 gap-6 lg:items-center lg:flex-row flex-col justify-between rounded-3xl p-4 sm:p-6 lg:p-8 lg:py-10";
-            const positionClasses =
-              [
-                "max-lg:col-span-2 max-lg:row-span-1",
-                "max-lg:col-span-1 max-lg:row-span-1",
-                "max-lg:col-span-3 max-lg:row-span-1 max-lg:flex-row items-center",
-                "max-lg:col-span-2 max-lg:row-span-2",
-                "max-lg:col-span-1 max-lg:row-span-1",
-                "max-lg:col-span-1 max-lg:row-span-1",
-              ][i] ?? "";
+              "Link-Item w-full flex sm:min-h-[120px] gap-6 max-[375px]:items-center lg:items-center lg:flex-row max-[375px]:flex-row flex-col justify-between rounded-3xl bg-skeleton p-4 sm:p-6 lg:p-8 lg:py-10";
 
             return (
-              <div
-                key={i}
-                className={`${base} ${positionClasses} `}
-                aria-hidden
-              >
+              <div key={i} className={`${base} `} aria-hidden>
                 {/* image placeholder */}
                 <div className="image-icon h-16 w-16 flex-shrink-0 md:h-20 md:w-20">
-                  <div className="h-full w-full animate-pulse rounded-lg bg-gray-300" />
+                  <div className="bg-skeleton-fg h-full w-full animate-pulse rounded-lg" />
                 </div>
 
                 {/* text placeholders */}
                 <div className="flex flex-1 flex-col items-end justify-end gap-2 text-right">
-                  <div className="h-5 w-1/2 animate-pulse rounded-md bg-gray-300" />
-                  <div className="h-6 w-3/4 animate-pulse rounded-md bg-gray-300" />
+                  <div className="bg-skeleton-fg h-5 w-1/2 animate-pulse rounded-md" />
+                  <div className="bg-skeleton-fg h-6 w-3/4 animate-pulse rounded-md" />
                 </div>
               </div>
             );

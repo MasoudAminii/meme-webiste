@@ -7,13 +7,13 @@ export default function LoadingGallery() {
 
   return (
     <div className="Gallery mb-28 lg:mb-8">
-      <div className="columns-2 gap-4 md:columns-3 lg:columns-4">
-        {Array.from({ length: 12 }).map((_, i) => {
+      <div className="columns-2 gap-4 md:columns-3 2xl:columns-4">
+        {Array.from({ length: 20 }).map((_, i) => {
           const heightClass = heights[i % heights.length];
           return (
             <div
               key={i}
-              className={`mb-4 w-full animate-pulse overflow-hidden rounded-2xl bg-gray-200 dark:bg-gray-700 ${heightClass}`}
+              className={`bg-skeleton mb-4 w-full animate-pulse overflow-hidden rounded-2xl duration-300 ${heightClass}`}
             />
           );
         })}

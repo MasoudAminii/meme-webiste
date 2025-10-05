@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     "جدیدترین رئال‌ها و ویدیوهای طنز و سرگرمی را در حلقه فیلم مشاهده کنید.",
 };
 
+
 export default async function Reels() {
   // Fetch all available slugs
   const items = await prisma.mediaItem.findMany({

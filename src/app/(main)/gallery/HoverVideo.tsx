@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import ShareButton from "./ShareButton";
 import Link from "next/link";
 
@@ -10,72 +10,99 @@ interface HoverVideoProps {
 }
 
 export default function HoverVideo({ src, href }: HoverVideoProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
   const [isHovered, setIsHovered] = useState(false);
-
-  const formatDuration = (sec: number) => {
-    const minutes = Math.floor(sec / 60);
-    const seconds = Math.floor(sec % 60);
-    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
-  };
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    const v = videoRef.current;
+    if (!v) return;
 
-    const onLoadedMetadata = () => {
-      setDuration(video.duration);
+    // Reset ready state when src changes
+    setIsReady(false);
+    setDuration(null);
+
+    const onLoadedMeta = () => {
+      setDuration(v.duration || null);
+      console.log("Duration loaded:", v.duration); // Debug log
     };
 
-    video.addEventListener("loadedmetadata", onLoadedMetadata);
+    const onCanPlay = () => {
+      setIsReady(true);
+      console.log("Video ready to play"); // Debug log
+    };
+
+    const onError = (e: Event) => {
+      console.error("Video error:", e);
+      setIsReady(true); // Show even on error to prevent infinite skeleton
+    };
+
+    // Check if already loaded (cached video)
+    if (v.readyState >= 1) {
+      setDuration(v.duration || null);
+    }
+    if (v.readyState >= 3) {
+      setIsReady(true);
+    }
+
+    v.addEventListener("loadedmetadata", onLoadedMeta);
+    v.addEventListener("canplay", onCanPlay);
+    v.addEventListener("error", onError);
 
     return () => {
-      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      v.removeEventListener("loadedmetadata", onLoadedMeta);
+      v.removeEventListener("canplay", onCanPlay);
+      v.removeEventListener("error", onError);
     };
   }, [src]);
 
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-    videoRef.current?.play();
-  };
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-    if (videoRef.current) {
-      videoRef.current.pause();
-      // no reset currentTime to keep position
-    }
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${String(secs).padStart(2, "0")}`;
   };
 
   return (
     <div
-      className="group relative mb-4 overflow-hidden rounded-2xl"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      className={`group relative w-full overflow-hidden rounded-2xl ${!isReady ? "bg-skeleton" : "bg-transparent"}`}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        videoRef.current?.play().catch(() => {});
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        videoRef.current?.pause();
+      }}
+      style={{ transform: "translateZ(0)" }}
     >
-      <Link href={href}>
+      <Link href={href} className="block">
         <video
           ref={videoRef}
           src={src}
           muted
           loop
-          preload="metadata"
-          className="h-auto w-full object-contain transition-transform duration-300"
           playsInline
+          preload="metadata"
+          className="block w-full object-cover"
+          style={{
+            opacity: isReady ? 1 : 0,
+            transition: "opacity 180ms ease-in",
+            display: "block",
+            height: "auto",
+          }}
         />
-
-        {/* Duration: show only if not hovered */}
-        {!isHovered && duration !== null && (
-          <div className="absolute top-2 left-2 rounded bg-black/70 px-2 py-0.5 font-mono text-xs text-white select-none">
-            {formatDuration(duration)}
-          </div>
-        )}
-        {/* Hover Overlay */}
         <div className="absolute inset-0 hidden flex-col items-center justify-center gap-4 group-hover:flex group-hover:bg-black/30">
           <span className="text-xl font-bold text-white">باز کن</span>
         </div>
       </Link>
-      <ShareButton src={src} />
+
+      {/* Duration badge - always visible when duration is available */}
+      {duration !== null && !isNaN(duration) && duration > 0 && (
+        <div className="pointer-events-none absolute top-2 left-2 z-20 rounded bg-black/80 px-2 py-1 font-mono text-xs font-semibold text-white shadow-lg select-none">
+          {formatDuration(duration)}
+        </div>
+      )}
     </div>
   );
 }

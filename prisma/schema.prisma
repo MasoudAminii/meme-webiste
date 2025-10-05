@@ -13,31 +13,32 @@ datasource db {
 
 model Link {
   id            Int      @id @default(autoincrement())
-  slug          String   @unique   // ✅ unique identifier for upsert
-  username      String
-  logoUrl       String
-  backgroundCss String
-  textColor     String
-  label         String
+  slug          String   @unique
+  username      String?
+  logoUrl       String?
+  backgroundCss String?
+  textColor     String?
+  label         String?
   targetUrl     String
+  position      Int      @default(0)  // ✅ Add this
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
-
 
 /// Media items: images or videos with metadata
 model MediaItem {
-  id            Int      @id @default(autoincrement())
-  slug          String   @unique                            // SEO-friendly path
-  src           String?                                   // Optional image
-  description   String?                                   // Caption or description
-  author        String?                                   // Creator/author name
-  likes         Int      @default(0)
-  shares        Int      @default(0)
-  views         Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  slug        String?   @unique @default(cuid())   // SEO-friendly path; DB uses cuid() if omitted
+  src         String?
+  description String?
+  author      String?
+  likes       Int      @default(0)
+  shares      Int      @default(0)
+  views       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
+
 
 /// About Us: consolidated content
 model AboutUs {
@@ -49,12 +50,27 @@ model AboutUs {
   statisticsLabel    String?
   statisticsContent  Int?                 // JSON for key/value metrics (Postgres Json)
   siteInfoLabel      String?
-  siteInfoContent    Int?               // text about site launch/details
+  siteInfoContent    Int?   
+  contactAdminLabel  String?
+  contactAdminUrl    String?   
+  financialSupportLabel String?         // text about site launch/details
+  financialSupportUrl String?         // text about site launch/details
 }
 
-/// Creator support links
-model Support {
-  id            Int      @id @default(autoincrement())
-  creatorName   String   @map("support_creator")          // Name of the creator
-  supportUrl    String                                    // URL for donations or contact
+
+
+enum Role {
+  ADMIN
+  WRITER
 }
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  role      Role     @default(WRITER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+

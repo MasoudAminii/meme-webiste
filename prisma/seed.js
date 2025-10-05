@@ -96,7 +96,7 @@ async function main() {
     {
       slug: "github",
       logoUrl: "github.png",
-      backgroundCss: "linear-gradient(to bottom, #302F34, #1A191C)", // vertical gradient
+      backgroundCss: "linear-gradient(to bottom, #302F34, #1A191C)",
       textColor: "#ffffff",
       label: "گیت‌هاب",
       username: "@your-username",
@@ -106,7 +106,7 @@ async function main() {
     {
       slug: "ita",
       logoUrl: "ITA-logo.png",
-      backgroundCss: "linear-gradient(to bottom, #E58025, #F0422A)", // vertical gradient
+      backgroundCss: "linear-gradient(to bottom, #E58025, #F0422A)",
       textColor: "#ffffff",
       label: "ایتا",
       username: "@ita-user",
@@ -116,7 +116,7 @@ async function main() {
     {
       slug: "linkedin",
       logoUrl: "linked-in.png",
-      backgroundCss: "linear-gradient(to bottom, #3C75C6, #144589)", // vertical gradient
+      backgroundCss: "linear-gradient(to bottom, #3C75C6, #144589)",
       textColor: "#ffffff",
       label: "لینکدین",
       username: "@your-username",
@@ -145,7 +145,9 @@ async function main() {
     },
   ];
 
-  for (const link of linkItems) {
+  for (let i = 0; i < linkItems.length; i++) {
+    const link = { ...linkItems[i] }; // no position for now
+
     await prisma.link.upsert({
       where: { slug: link.slug },
       update: {
@@ -155,6 +157,7 @@ async function main() {
         label: link.label,
         username: link.username,
         targetUrl: link.targetUrl,
+        // position: omitted until DB has the column
       },
       create: {
         slug: link.slug,
@@ -165,9 +168,9 @@ async function main() {
         username: link.username,
         targetUrl: link.targetUrl,
         createdAt: link.createdAt,
+        // position: omitted
       },
     });
-    console.log(`Upserted link ${link.slug}`);
   }
 
   await prisma.aboutUs.upsert({

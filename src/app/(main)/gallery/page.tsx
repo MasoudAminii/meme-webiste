@@ -15,8 +15,24 @@ export const metadata: Metadata = {
 type MediaItem = {
   id: number;
   src: string | null;
-  slug?: string;
+  slug: string | null; // Changed from string | undefined to string | null
   createdAt: Date;
+};
+// Helper function to get the full media path
+const getMediaPath = (src: string): string => {
+  // If it's already a full path, return as is
+  if (src.startsWith("http") || src.startsWith("/")) {
+    return src;
+  }
+
+  // If it's just a filename, prepend with /gallery/
+  return `/gallery/${src}`;
+};
+
+// Helper function to detect video files
+const isVideoFile = (filename: string): boolean => {
+  const videoExtensions = [".mp4", ".webm", ".ogg", ".avi", ".mov", ".mkv"];
+  return videoExtensions.some((ext) => filename.toLowerCase().includes(ext));
 };
 
 export default async function GalleryPage() {
@@ -24,6 +40,11 @@ export default async function GalleryPage() {
 
   try {
     items = await prisma.mediaItem.findMany({
+      where: {
+        src: {
+          not: null, // Only get items with media
+        },
+      },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -39,42 +60,46 @@ export default async function GalleryPage() {
 
   return (
     <div className="Gallery mb-28 lg:mb-8">
-      <div className="columns-2 gap-4 md:columns-3 lg:columns-4">
+      <div className="columns-2 gap-4 md:columns-3 2xl:columns-4">
         {items.map((item, index) => {
           const src = item.src;
           if (!src) return null;
 
-          const isVideo = src.toLowerCase().endsWith(".mp4");
+          // Get the full media path
+          const fullMediaPath = getMediaPath(src);
+          const isVideo = isVideoFile(src);
+
           // <- changed to point to /reels
           const href = `/reels/${item.slug ?? String(item.id)}`;
 
           if (!isVideo) {
             return (
               <div
-                key={item.id ?? index}
+                key={index}
                 className="group relative mb-4 overflow-hidden rounded-2xl"
               >
                 <Link href={href} className="block">
                   <Image
-                    src={src}
+                    src={fullMediaPath}
                     alt={`Gallery image ${index + 1}`}
                     width={500}
                     height={500}
                     quality={100}
-                    className="h-auto w-full object-contain transition-transform duration-300"
+                    className="block h-full w-full object-cover transition-transform duration-300" // removed rounded-2xl here
                   />
                   <div className="absolute inset-0 hidden flex-col items-center justify-center gap-4 group-hover:flex group-hover:bg-black/30">
                     <span className="text-xl font-bold text-white">باز کن</span>
                   </div>
                 </Link>
-                <ShareButton src={src} />
+                <ShareButton src={fullMediaPath} />
+                {/* Pass full path to share button too */}
               </div>
             );
           }
 
           return (
-            <div key={item.id ?? index} className="mb-4">
-              <HoverVideo src={src} href={href} />
+            <div key={index} className="mb-4 rounded-2xl">
+              <HoverVideo src={fullMediaPath} href={href} />{" "}
             </div>
           );
         })}

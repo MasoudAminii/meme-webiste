@@ -2,14 +2,23 @@
 import StatsCards from "@/components/AdminPanel/StatsCards";
 import QuickActions from "@/components/AdminPanel/QuickActions";
 import RecentActivity from "@/components/AdminPanel/RecentActivity";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/authOptions";
+import { redirect } from "next/navigation";
 
-export default function Dashboard() {
+export default async function Dashboard() {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    redirect("/");
+  }
+
   return (
     <div className="">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="mb-2 text-3xl font-bold">داشبورد مدیریت</h1>
-        <p className="text-light-dark">نمای کلی آمار و عملکرد سیستم</p>
+      <div className="bg-bg-1 mb-6 flex items-center justify-between rounded-2xl p-6 shadow-sm">
+        <div>
+          <h1 className="text-2xl font-bold">داشبورد مدیریت</h1>
+          <p className="text-light-dark mt-1">نمای کلی آمار و عملکرد سیستم</p>
+        </div>
       </div>
 
       {/* Stats + QuickActions row */}

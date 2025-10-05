@@ -7,10 +7,10 @@ import type { StaticImageData } from "next/image";
 
 type Post = {
   id: number;
-  slug: string;
+  slug: string | null;
   src: string | StaticImageData;
   isVideo?: boolean;
-  poster?: string;
+  poster?: string | null; // Change this to allow null
   initialLikes?: number;
   initialViews?: number;
   caption?: string;
@@ -214,8 +214,9 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
         role="list"
       >
         {posts.map((p, i) => {
-          // resolve StaticImageData -> string for TypeScript safety
-          const resolvedSrc: string =
+          new Promise((r) => setTimeout(r, 0));
+          // The src should already be resolved by ClientReelsWrapper
+          const resolvedSrc =
             typeof p.src === "string" ? p.src : (p.src as StaticImageData).src;
 
           return (

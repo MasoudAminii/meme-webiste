@@ -22,6 +22,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "prisma/seed.js"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "prisma/seed.js", "src/app/api/auth/[...nextauth]/route.js", "src/app/(adminPanel)/AdminHeader.jsx", "src/actions/auth.js", "src/app/(login)/signin/page.jsx", "src/app/(adminPanel)/dashboard/page.jsx", "src/app/(adminPanel)/layout.jsx"],
   "exclude": ["node_modules"]
 }
