@@ -234,7 +234,6 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
                 initialLikes={p.initialLikes}
                 initialViews={p.initialViews}
                 caption={p.caption}
-                author={p.author}
                 isActive={i === currentIndex}
               />
             </div>

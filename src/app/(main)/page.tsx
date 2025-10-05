@@ -36,7 +36,10 @@ export default async function Home() {
   return (
     <div>
       <div className="Banner">
-        <div className="banner-image overflow-hidden rounded-[20px] drop-shadow-xl">
+        <div
+          className="banner-image overflow-hidden rounded-[20px]"
+          style={{ boxShadow: "rgba(99, 99, 99, 0.2) 0px 2px 8px 0px" }}
+        >
           <Image
             src="/banner/shia-meme-banner.jpg"
             alt="شیعه میم"
@@ -74,7 +77,7 @@ async function LinksGrid({ groups }: { groups: Groups }) {
           key={gIdx}
           className="mb-4 grid grid-cols-2 gap-4 max-[375px]:grid-cols-1 md:mb-6 md:gap-6"
         >
-          {group.map((link, i) => {
+          {group.map((link) => {
             const base =
               "Link-Item w-full flex sm:min-h-[120px] gap-6 max-[375px]:items-center lg:items-center lg:flex-row max-[375px]:flex-row flex-col justify-between rounded-3xl p-4 sm:p-6 lg:p-8 lg:py-10";
 
@@ -102,7 +105,7 @@ async function LinksGrid({ groups }: { groups: Groups }) {
                 className={`${base} ${bgClass}`}
                 style={{
                   ...inlineStyle, // spread existing styles
-                  boxShadow: "0px 2px 8px rgba(99, 99, 99, 0.2)", // add box shadow
+                  boxShadow: "rgba(99, 99, 99, 0.2) 0px 2px 8px 0px",
                 }}
               >
                 <div className="image-icon h-16 w-16 flex-shrink-0 md:h-20 md:w-20">

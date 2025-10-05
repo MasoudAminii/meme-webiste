@@ -28,7 +28,7 @@ export default function ReelsLoading() {
             </div>
 
             {/* play/pause button skeleton (top-right) */}
-            <div className="h-14 w-14 rounded-full bg-gray-300 dark:bg-gray-600" />
+            <div className="bg-skeleton-fg h-14 w-14 rounded-full" />
           </div>
 
           {/* Action column skeleton (left bottom) */}

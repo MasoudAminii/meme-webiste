@@ -2,16 +2,11 @@
 
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import bcrypt from "bcryptjs"; // You'll need to install bcryptjs: npm install bcryptjs @types/bcryptjs
+import bcrypt from "bcryptjs";
+import type { User } from "@prisma/client";
 
 // You can replace this with your actual Prisma client import
 // import { prisma } from "@/lib/prisma";
-
-interface CreateUserData {
-  username: string;
-  password: string;
-  role: "ADMIN" | "WRITER";
-}
 
 /**
  * Creates a new user with hashed password
@@ -152,9 +147,9 @@ export async function updateUser(id: number, formData: FormData) {
     }
 
     // Prepare update data
-    const updateData: any = {
+    const updateData: Partial<User> = {
       username: username.trim(),
-      role: role,
+      role,
       updatedAt: new Date(),
     };
 

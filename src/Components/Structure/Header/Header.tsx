@@ -1,31 +1,29 @@
 import Image from "next/image";
 import NavLinks from "./NavLinks";
 import ThemeChange from "./ThemeChange";
-import Pwa from "../../../../public/logo/pwa.png";
 import { GoHomeFill } from "react-icons/go";
 import { BsImageFill } from "react-icons/bs";
 import { HiSquares2X2 } from "react-icons/hi2";
 import { FaPenSquare } from "react-icons/fa";
+import InstallPWAButton from "@/Components/Structure/InstallPWAButton";
 
 const navLinks = [
   {
     href: "/",
     label: "صفحه اصلی",
     icon: <GoHomeFill size={30} />,
-    match: ["/"], // root exact
+    match: ["/"],
   },
   {
     href: "/gallery",
     label: "گالری آثار",
     icon: <BsImageFill size={30} />,
-    // any path that starts with /gallery will match (e.g. /gallery, /gallery/slug)
     match: ["/gallery"],
   },
   {
     href: "/reels",
     label: "حلقه فیلم",
     icon: <HiSquares2X2 size={30} />,
-    // make this active for both /reels and /video segments (and their subpaths)
     match: ["/reels", "/video"],
   },
   {
@@ -39,6 +37,7 @@ const navLinks = [
 const Header = () => {
   return (
     <>
+      {/* Desktop Nav */}
       <nav
         className="sticky top-8 z-50 flex max-w-[367px] min-w-[367px] flex-col justify-between gap-8 rounded-[20px] bg-[var(--gradient-2)] p-6 shadow-2xl max-lg:hidden"
         style={{
@@ -79,20 +78,13 @@ const Header = () => {
             <span className="text-secondary font-medium">حالت تاریک</span>
             <ThemeChange />
           </div>
-
-          <div className="pwa rounded-xl bg-[#D6EAF8] p-6 text-center">
-            <h5 className="mb-2 text-[21px] font-semibold text-black">
-              استفاده از در حالت PWA
-            </h5>
-            <p className="py-3 leading-relaxed font-semibold text-black">
-              برای استفاده بهتر و دسترسی راحت‌تر از حالت اپلیکیشن استفاده کنید.
-            </p>
-            <button className="btn–gradient mt-2 w-full cursor-pointer rounded-xl py-4 text-lg font-semibold transition-all duration-200 hover:shadow-lg active:scale-95">
-              دانلود نسخه PWA
-            </button>
+          <div>
+            <InstallPWAButton />
           </div>
         </div>
       </nav>
+
+      {/* Mobile Nav */}
       <nav className="MobileNav block lg:hidden">
         <div className="TopNav flex items-center justify-between py-4">
           <div className="logo-text flex flex-shrink-0 flex-col">
@@ -104,20 +96,11 @@ const Header = () => {
             </span>
           </div>
           <div className="icons flex gap-2">
-            <div className="pwa">
-              <button className="image-logo relative overflow-hidden rounded-lg bg-[#FFFFFF] p-2 shadow-lg dark:bg-white/20">
-                <Image
-                  src={Pwa}
-                  alt="Logo"
-                  width={28}
-                  height={28}
-                  priority
-                  className="object-contain"
-                />
-              </button>
-            </div>
             <div className="darkmode">
               <ThemeChange />
+            </div>
+            <div>
+              <InstallPWAButton />
             </div>
           </div>
         </div>

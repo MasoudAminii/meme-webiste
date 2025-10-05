@@ -5,21 +5,28 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
-/* ----------------------- Icon components ----------------------- */ const HeartIcon =
-  ({ size = 28, filled = false }: any) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-        fill={filled ? "currentColor" : "none"}
-        stroke={filled ? "none" : "currentColor"}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+interface HeartIconProps {
+  size?: number;
+  filled?: boolean;
+}
+const HeartIcon = ({ size = 28, filled = false }: HeartIconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+    <path
+      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+      fill={filled ? "currentColor" : "none"}
+      stroke={filled ? "none" : "currentColor"}
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
-const VolumeIcon = ({ muted = false, size = 20 }: any) => (
+interface VolumeIconProps {
+  muted?: boolean;
+  size?: number;
+}
+const VolumeIcon = ({ muted = false, size = 20 }: VolumeIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
     <polygon
       points="11,5 6,9 2,9 2,15 6,15 11,19"
@@ -65,7 +72,14 @@ const VolumeIcon = ({ muted = false, size = 20 }: any) => (
   </svg>
 );
 
-const PlayPauseIcon = ({ isPlaying = false, size = 24 }: any) => (
+interface PlayPauseIconProps {
+  isPlaying?: boolean;
+  size?: number;
+}
+const PlayPauseIcon = ({
+  isPlaying = false,
+  size = 24,
+}: PlayPauseIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
     {isPlaying ? (
       <>
@@ -82,11 +96,11 @@ const PlayPauseIcon = ({ isPlaying = false, size = 24 }: any) => (
 type ReelsCardProps = {
   src: string;
   isVideo?: boolean;
-  poster?: string | null; // Add | null here
+  poster?: string | null;
   initialLikes?: number;
   initialViews?: number;
   caption?: string;
-  author?: string;
+  // REMOVE: author?: string;
   isActive?: boolean;
   onNext?: () => void;
   onPrev?: () => void;
@@ -107,7 +121,6 @@ export default function ReelsCard({
   initialLikes = 0,
   initialViews = 0,
   caption = "",
-  author = "Unknown",
   isActive = false,
   onNext,
   onPrev,
@@ -334,17 +347,6 @@ export default function ReelsCard({
     return () => window.removeEventListener("keydown", onKey);
   }, [onNext, onPrev, togglePlayPause]);
 
-  /* ----------------------- Scrubber handlers ----------------------- */
-  // value range will be 0..1000 for smoothness
-  const toSlider = (p: number) =>
-    Math.max(0, Math.min(1000, Math.round(p * 1000)));
-  const fromSlider = (val: number) => Math.max(0, Math.min(1, val / 1000));
-
-  const onSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const p = fromSlider(Number(e.target.value));
-    setProgress(p);
-  };
-
   const applySeek = useCallback(
     (p: number) => {
       const v = videoRef.current;
@@ -362,24 +364,6 @@ export default function ReelsCard({
     },
     [duration, isVideo],
   );
-
-  const onPointerUp = () => {
-    // apply current progress as seek
-    setSeeking(false);
-    applySeek(progress);
-  };
-
-  const onPointerDown = () => {
-    setSeeking(true);
-  };
-
-  const onBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const p = Math.max(0, Math.min(1, x / rect.width));
-    setProgress(p);
-    applySeek(p);
-  };
 
   return (
     <div

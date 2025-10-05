@@ -71,9 +71,6 @@ export default async function Page({
     );
   }
 
-  // remove items with null src before mapping
-  const validReels = reels.filter((r) => !!r.src);
-
   const allPosts = reels.map((r) => ({
     id: r.id,
     slug: r.slug!,

@@ -23,7 +23,11 @@ export default async function AboutUs() {
   return (
     <div className="AboutUs">
       <div className="Banner mb-6 md:mb-8">
-        <div className="banner-image overflow-hidden rounded-[20px] drop-shadow-xl">
+        <div
+          className="banner-image overflow-hidden rounded-[20px]"
+          style={{ boxShadow: "rgba(99, 99, 99, 0.2) 0px 2px 8px 0px" }}
+        >
+          {" "}
           <Image
             src={`/banner/${data?.BannerUrl ?? "shia-meme-banner.jpg"}`}
             alt={data?.BannerUrl ?? "بنر میم شیعه"}

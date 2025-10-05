@@ -1,45 +1,36 @@
 "use client";
 
-import React, {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
 import {
+  AlertCircle,
+  AlertTriangle,
+  Calendar,
+  CheckCircle,
+  Download,
   Edit,
-  Edit3,
-  Trash2,
-  Search,
+  Eye,
   Filter,
+  Hash,
+  Key,
+  MoreHorizontal,
+  PenTool,
+  RefreshCw,
+  Save,
+  Search,
+  Shield,
   SortAsc,
   SortDesc,
-  Eye,
-  Calendar,
+  Trash2,
   User,
-  Hash,
-  MoreHorizontal,
-  RefreshCw,
-  Download,
-  Plus,
-  AlertCircle,
-  CheckCircle,
-  X,
-  Users,
-  Shield,
-  PenTool,
-  Key,
   UserPlus,
-  AlertTriangle,
-  Save,
+  Users,
+  X,
 } from "lucide-react";
+import React, { useMemo, useState, useTransition } from "react";
 
 import {
+  bulkDeleteUsers,
   createUser,
   deleteUser,
-  bulkDeleteUsers,
-  updateUser,
 } from "@/actions/usersActions"; // Import your server actions
 
 // User type based on your Prisma schema
@@ -63,9 +54,7 @@ interface CreateFormProps {
   setRole: React.Dispatch<React.SetStateAction<"ADMIN" | "WRITER">>;
   isPending: boolean;
   error: string | null;
-  setError: React.Dispatch<React.SetStateAction<string | null>>;
   handleCreateUser: (e?: React.FormEvent) => Promise<void> | void;
-  resetForm: () => void;
 }
 
 interface DeleteConfirmationModalProps {
@@ -238,9 +227,7 @@ const CreateFormInner: React.FC<CreateFormProps> = ({
   setRole,
   isPending,
   error,
-  setError,
   handleCreateUser,
-  resetForm,
 }) => {
   return (
     <div>
@@ -405,7 +392,7 @@ const UsersContainer = ({ data }: { data: UserItem[] }) => {
 
   // Advanced filtering and sorting
   const filteredAndSortedUsers = useMemo(() => {
-    let filtered = users.filter((user) => {
+    const filtered = users.filter((user) => {
       const matchesSearch =
         user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.id.toString().includes(searchTerm) ||
@@ -426,8 +413,14 @@ const UsersContainer = ({ data }: { data: UserItem[] }) => {
     });
 
     return filtered.sort((a, b) => {
-      const aVal: any = a[sortField as keyof UserItem];
-      const bVal: any = b[sortField as keyof UserItem];
+      const aVal: string | number | Date = a[sortField as keyof UserItem] as
+        | string
+        | number
+        | Date;
+      const bVal: string | number | Date = b[sortField as keyof UserItem] as
+        | string
+        | number
+        | Date;
       const multiplier = sortOrder === "asc" ? 1 : -1;
 
       if (typeof aVal === "string" && typeof bVal === "string") {
@@ -605,14 +598,6 @@ const UsersContainer = ({ data }: { data: UserItem[] }) => {
     );
   };
 
-  const getRoleIcon = (role: "ADMIN" | "WRITER") => {
-    return role === "ADMIN" ? (
-      <Shield className="h-4 w-4 text-red-600" />
-    ) : (
-      <PenTool className="h-4 w-4 text-blue-600" />
-    );
-  };
-
   const getRoleBadge = (role: "ADMIN" | "WRITER") => {
     return role === "ADMIN" ? (
       <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
@@ -686,14 +671,6 @@ const UsersContainer = ({ data }: { data: UserItem[] }) => {
     });
   };
 
-  const resetForm = () => {
-    setUsername("");
-    setPassword("");
-    setConfirmPassword("");
-    setRole("WRITER");
-    setError(null);
-  };
-
   if (!users || users.length === 0) {
     return (
       <div className="bg-bg-1 rounded-2xl text-center">
@@ -730,9 +707,7 @@ const UsersContainer = ({ data }: { data: UserItem[] }) => {
               setRole={setRole}
               isPending={isPending}
               error={error}
-              setError={setError}
               handleCreateUser={handleCreateUser}
-              resetForm={resetForm}
             />
           </div>
         )}
@@ -1095,9 +1070,7 @@ const UsersContainer = ({ data }: { data: UserItem[] }) => {
             setRole={setRole}
             isPending={isPending}
             error={error}
-            setError={setError}
             handleCreateUser={handleCreateUser}
-            resetForm={resetForm}
           />
         </div>
       )}

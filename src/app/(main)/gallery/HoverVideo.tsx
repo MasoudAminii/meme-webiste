@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import ShareButton from "./ShareButton";
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 interface HoverVideoProps {
   src: string;
@@ -12,7 +11,6 @@ interface HoverVideoProps {
 export default function HoverVideo({ src, href }: HoverVideoProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
-  const [isHovered, setIsHovered] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -67,11 +65,9 @@ export default function HoverVideo({ src, href }: HoverVideoProps) {
     <div
       className={`group relative w-full overflow-hidden rounded-2xl ${!isReady ? "bg-skeleton" : "bg-transparent"}`}
       onMouseEnter={() => {
-        setIsHovered(true);
         videoRef.current?.play().catch(() => {});
       }}
       onMouseLeave={() => {
-        setIsHovered(false);
         videoRef.current?.pause();
       }}
       style={{ transform: "translateZ(0)" }}

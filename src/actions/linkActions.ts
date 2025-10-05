@@ -3,6 +3,14 @@
 import prisma from "@/lib/db";
 import { uploadBannerImage, deleteBannerImage } from "@/lib/LinkUpload";
 import { revalidatePath } from "next/cache";
+import type { Link } from "@prisma/client";
+
+type ActionResult = {
+  success?: true;
+  error?: string;
+  message?: string;
+  link?: Link | null;
+};
 
 /**
  * Server action to create or update a Link using Prisma.
@@ -10,9 +18,12 @@ import { revalidatePath } from "next/cache";
  * - If a file input named "logoFile" is present it will be uploaded with uploadBannerImage().
  * - If an existing record with the same slug exists, the record will be updated (and old uploaded image deleted).
  *
- * Returns an object shaped like your ActionState: { success?: boolean, error?: string, message?: string, link?: any }
+ * Returns an object shaped like ActionResult.
  */
-export async function createLink(prevState: any, formData: FormData) {
+export async function createLink(
+  prevState: ActionResult | undefined,
+  formData: FormData,
+): Promise<ActionResult> {
   try {
     // Normalize & trim values
     const slug = String(formData.get("slug") || "").trim();
@@ -28,7 +39,6 @@ export async function createLink(prevState: any, formData: FormData) {
     }
 
     // Get possible values for logo
-    // Note: client uses a file input named "logoFile" and also sends a hidden "logoUrl" (which may be "default.png" or a previously saved filename).
     let logoFilename = String(formData.get("logoUrl") || "default.png").trim();
 
     const maybeFile = formData.get("logoFile") as File | null;
@@ -67,12 +77,12 @@ export async function createLink(prevState: any, formData: FormData) {
         ) {
           try {
             await deleteBannerImage(existing.logoUrl);
-          } catch (delErr) {
+          } catch (delErr: unknown) {
             // Log and continue — do not block user action for deletion failure
             console.error("Failed to delete previous image:", delErr);
           }
         }
-      } catch (uploadErr) {
+      } catch (uploadErr: unknown) {
         console.error("Upload error:", uploadErr);
         return { error: "خطا در بارگذاری تصویر" };
       }
@@ -128,17 +138,24 @@ export async function createLink(prevState: any, formData: FormData) {
     revalidatePath(`/l/${slug}`); // If you have individual link pages
 
     return { success: true, message: "لینک با موفقیت ایجاد شد", link: created };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("createLink server action error:", error);
-    // Prisma unique constraint error code
-    if (error?.code === "P2002") {
+
+    // Check for Prisma unique constraint error code (P2002)
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2002"
+    ) {
       return { error: "این شناسه قبلاً استفاده شده است" };
     }
+
     return { error: "خطا در ایجاد یا بروزرسانی لینک" };
   }
 }
 
-export async function deleteLink(linkId: number) {
+export async function deleteLink(linkId: number): Promise<ActionResult> {
   try {
     // First, get the link to check if it has an uploaded image
     const existingLink = await prisma.link.findUnique({
@@ -156,7 +173,7 @@ export async function deleteLink(linkId: number) {
     if (existingLink.logoUrl && existingLink.logoUrl !== "default.png") {
       try {
         await deleteBannerImage(existingLink.logoUrl);
-      } catch (delErr) {
+      } catch (delErr: unknown) {
         console.error("Failed to delete image file:", delErr);
         // Continue with link deletion even if image deletion fails
       }
@@ -175,7 +192,7 @@ export async function deleteLink(linkId: number) {
     }
 
     return { success: true, message: "لینک با موفقیت حذف شد" };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("deleteLink server action error:", error);
     return { error: "خطا در حذف لینک" };
   }
@@ -183,7 +200,7 @@ export async function deleteLink(linkId: number) {
 
 export async function reorderLinks(
   updates: { id: number; position: number }[],
-) {
+): Promise<ActionResult> {
   try {
     // Use transaction to update all positions atomically
     await prisma.$transaction(
@@ -197,7 +214,7 @@ export async function reorderLinks(
 
     revalidatePath("/dashboard/links");
     return { success: true };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("reorderLinks error:", error);
     return { error: "خطا در بروزرسانی ترتیب" };
   }

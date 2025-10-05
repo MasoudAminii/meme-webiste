@@ -60,7 +60,6 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
   });
 
   const [activeTab, setActiveTab] = useState<"preview" | "edit">("preview");
-  const [isEditing, setIsEditing] = useState(false);
 
   // Image upload state
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -257,12 +256,6 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
   const removeBanner = () => {
     setAboutData((p) => ({ ...p, BannerUrl: null }));
     if (fileRef.current) fileRef.current.value = "";
-  };
-
-  const handleSave = () => {
-    console.log("Saving (component-only):", aboutData);
-    setIsEditing(false);
-    setActiveTab("preview");
   };
 
   // Auto-resize textarea on component mount and data changes
@@ -558,10 +551,13 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
                       <div className="flex flex-col gap-4 md:gap-6">
                         <div className="relative overflow-hidden rounded-lg shadow-md">
                           {isDataUrl(aboutData.BannerUrl) ? (
-                            <img
+                            <Image
                               src={aboutData.BannerUrl}
-                              alt="preview"
-                              className="max-h-60 w-full object-contain md:max-h-80"
+                              alt="بنر"
+                              width={1200}
+                              height={400}
+                              className="w-full object-contain"
+                              unoptimized
                             />
                           ) : (
                             <Image

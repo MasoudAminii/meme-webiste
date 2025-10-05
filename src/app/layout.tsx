@@ -24,9 +24,8 @@ export const metadata: Metadata = {
     "خنده",
     "طنز اسلامی",
   ],
-  authors: [{ name: "تیم میم‌های شیعه", url: "https://yourwebsite.com" }],
+  authors: [{ name: "تیم میم‌های شیعه", url: "https://armanegar.com" }],
   creator: "میم‌های شیعه",
-  publisher: "میم‌های شیعه",
 
   formatDetection: {
     telephone: false,
@@ -59,10 +58,14 @@ export const metadata: Metadata = {
     creator: "@yourtwitterhandle",
   },
   icons: {
-    // بهتره از مسیر از ریشه استفاده کنید تا مشکل مسیریابی نداشته باشه
     icon: "/favicon.ico",
   },
-  manifest: "/site.webmanifest",
+  manifest: "/manifest.webmanifest", // Changed this
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "میم‌های شیعه", // Changed to your app name
+  },
   robots: {
     index: true,
     follow: true,

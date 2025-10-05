@@ -6,15 +6,7 @@ import { writeFile, mkdir, unlink } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-
-// You'll need to replace this with your actual Prisma client
-// import { prisma } from "@/lib/prisma";
-
-interface CreatePostData {
-  slug: string;
-  description?: string;
-  author?: string;
-}
+import type { MediaItem } from "@prisma/client";
 
 /**
  * Uploads a media file (image or video) to the public/gallery directory
@@ -22,25 +14,19 @@ interface CreatePostData {
  * @returns The filename (not full path) that was saved
  */
 export async function uploadMediaFile(file: File): Promise<string> {
-  // Convert file to buffer
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
 
-  // Create gallery directory if it doesn't exist
   const galleryDir = path.join(process.cwd(), "public", "gallery");
   if (!existsSync(galleryDir)) {
     await mkdir(galleryDir, { recursive: true });
   }
 
-  // Generate unique filename with original extension
   const fileExtension = path.extname(file.name);
   const filename = `${uuidv4()}${fileExtension}`;
   const filepath = path.join(galleryDir, filename);
 
-  // Write file to disk
   await writeFile(filepath, buffer);
-
-  // Return just the filename (not full path)
   return filename;
 }
 
@@ -55,39 +41,47 @@ export async function deleteMediaFile(filename: string): Promise<void> {
       await unlink(filepath);
       console.log(`Deleted gallery file: ${filename}`);
     }
-  } catch (error) {
-    console.error("Error deleting gallery file:", error);
+  } catch (err) {
+    console.error("Error deleting gallery file:", err);
   }
 }
+
+type CreatePostResult =
+  | { success: true; message: string; data: MediaItem }
+  | { success: false; message: string; data: null };
 
 /**
  * Creates a new post with optional media file
  */
-export async function createPost(formData: FormData) {
+export async function createPost(
+  formData: FormData,
+): Promise<CreatePostResult> {
   try {
-    const slug = formData.get("slug") as string | null;
-    const description = formData.get("description") as string;
-    const author = formData.get("author") as string;
+    const slug = (formData.get("slug") as string | null)?.trim() ?? "";
+    const description =
+      (formData.get("description") as string | null)?.trim() ?? null;
+    const author = (formData.get("author") as string | null)?.trim() ?? null;
     const mediaFile = formData.get("media") as File | null;
 
     // Only validate slug uniqueness if user provided one
-    if (slug?.trim()) {
+    if (slug) {
       const existingPost = await prisma.mediaItem.findUnique({
-        where: { slug: slug.trim() },
+        where: { slug },
       });
 
       if (existingPost) {
-        throw new Error(
-          "این اسلاگ قبلاً استفاده شده است. لطفاً اسلاگ دیگری انتخاب کنید",
-        );
+        return {
+          success: false,
+          message:
+            "این اسلاگ قبلاً استفاده شده است. لطفاً اسلاگ دیگری انتخاب کنید",
+          data: null,
+        };
       }
     }
 
     let mediaUrl: string | undefined;
 
-    // Handle media file upload if provided
     if (mediaFile && mediaFile.size > 0) {
-      // Validate file type (images and videos)
       const validTypes = [
         "image/jpeg",
         "image/jpg",
@@ -102,54 +96,55 @@ export async function createPost(formData: FormData) {
       ];
 
       if (!validTypes.includes(mediaFile.type)) {
-        throw new Error("فرمت فایل باید تصویر یا ویدیو باشد");
+        return {
+          success: false,
+          message: "فرمت فایل باید تصویر یا ویدیو باشد",
+          data: null,
+        };
       }
 
-      // Validate file size (max 50MB for videos, 10MB for images)
       const maxSize = mediaFile.type.startsWith("video/")
         ? 50 * 1024 * 1024
         : 10 * 1024 * 1024;
       if (mediaFile.size > maxSize) {
         const maxSizeMB = mediaFile.type.startsWith("video/") ? 50 : 10;
-        throw new Error(`حجم فایل نباید بیشتر از ${maxSizeMB}MB باشد`);
+        return {
+          success: false,
+          message: `حجم فایل نباید بیشتر از ${maxSizeMB}MB باشد`,
+          data: null,
+        };
       }
 
       mediaUrl = await uploadMediaFile(mediaFile);
     }
 
-    // Create post in database
-    // Create post in database
-    const newPost = {
-      slug: slug?.trim() || undefined, // Let DB use cuid() default if empty
-      src: mediaUrl,
-      description: description?.trim() || null,
-      author: author?.trim() || null,
-      likes: 0,
-      shares: 0,
-      views: 0,
+    const newPostData: Omit<MediaItem, "id" | "createdAt" | "updatedAt"> &
+      Partial<Pick<MediaItem, "createdAt" | "updatedAt">> = {
+      // let DB supply defaults where appropriate (e.g., if your schema uses default cuid())
+      slug: slug || (undefined as unknown as string),
+      src: mediaUrl ?? null,
+      description: description ?? null,
+      author: author ?? null,
+      likes: 0 as number,
+      shares: 0 as number,
+      views: 0 as number,
+      // createdAt/updatedAt will be populated by Prisma if configured
     };
 
-    // Uncomment and use your actual Prisma client
     const post = await prisma.mediaItem.create({
-      data: newPost,
+      data: newPostData, // Prisma typing for create input can be strict; this is safe because shape matches
     });
 
     console.log("Created post:", post);
 
-    // Revalidate multiple paths to show updated data
     revalidatePath("/dashboard/posts");
     revalidatePath("/gallery");
     revalidatePath("/reels");
 
-    return {
-      success: true,
-      message: "پست با موفقیت ایجاد شد",
-      data: post,
-    };
-  } catch (error) {
+    return { success: true, message: "پست با موفقیت ایجاد شد", data: post };
+  } catch (error: unknown) {
     console.error("Error creating post:", error);
 
-    // Handle Prisma unique constraint errors specifically
     if (
       error instanceof Error &&
       error.message.includes("Unique constraint failed")
@@ -174,44 +169,44 @@ export async function createPost(formData: FormData) {
 /**
  * Updates an existing post
  */
-export async function updatePost(id: number, formData: FormData) {
+type UpdatePostResult =
+  | { success: true; message: string; data: Partial<MediaItem> }
+  | { success: false; message: string; data: null };
+
+export async function updatePost(
+  id: number,
+  formData: FormData,
+): Promise<UpdatePostResult> {
   try {
-    const slug = formData.get("slug") as string;
-    const description = formData.get("description") as string;
-    const author = formData.get("author") as string;
+    const slug = (formData.get("slug") as string | null)?.trim() ?? "";
+    const description =
+      (formData.get("description") as string | null)?.trim() ?? null;
+    const author = (formData.get("author") as string | null)?.trim() ?? null;
     const mediaFile = formData.get("media") as File | null;
     const removeMedia = formData.get("removeMedia") === "true";
 
-    if (!slug?.trim()) {
-      throw new Error("اسلاگ/عنوان الزامی است");
+    if (!slug) {
+      return { success: false, message: "اسلاگ/عنوان الزامی است", data: null };
     }
 
-    // Get existing post to check for old media
-    /* 
-    const existingPost = await prisma.mediaItem.findUnique({
-      where: { id }
-    });
-
+    // Retrieve existing post to check previous src (optional)
+    const existingPost = await prisma.mediaItem.findUnique({ where: { id } });
     if (!existingPost) {
-      throw new Error("پست یافت نشد");
+      return { success: false, message: "پست یافت نشد", data: null };
     }
-    */
 
     let mediaUrl: string | undefined | null = undefined;
 
-    // Handle media removal
     if (removeMedia) {
-      // Delete old media file if exists
-      /* 
       if (existingPost.src) {
-        await deleteMediaFile(existingPost.src);
+        try {
+          await deleteMediaFile(existingPost.src);
+        } catch (fileErr) {
+          console.error("Failed to delete old media file:", fileErr);
+        }
       }
-      */
       mediaUrl = null;
-    }
-    // Handle new media upload
-    else if (mediaFile && mediaFile.size > 0) {
-      // Validate and upload new file
+    } else if (mediaFile && mediaFile.size > 0) {
       const validTypes = [
         "image/jpeg",
         "image/jpg",
@@ -226,7 +221,11 @@ export async function updatePost(id: number, formData: FormData) {
       ];
 
       if (!validTypes.includes(mediaFile.type)) {
-        throw new Error("فرمت فایل باید تصویر یا ویدیو باشد");
+        return {
+          success: false,
+          message: "فرمت فایل باید تصویر یا ویدیو باشد",
+          data: null,
+        };
       }
 
       const maxSize = mediaFile.type.startsWith("video/")
@@ -234,24 +233,29 @@ export async function updatePost(id: number, formData: FormData) {
         : 10 * 1024 * 1024;
       if (mediaFile.size > maxSize) {
         const maxSizeMB = mediaFile.type.startsWith("video/") ? 50 : 10;
-        throw new Error(`حجم فایل نباید بیشتر از ${maxSizeMB}MB باشد`);
+        return {
+          success: false,
+          message: `حجم فایل نباید بیشتر از ${maxSizeMB}MB باشد`,
+          data: null,
+        };
       }
 
-      // Delete old media file if exists
-      /* 
+      // delete previous file if exists
       if (existingPost.src) {
-        await deleteMediaFile(existingPost.src);
+        try {
+          await deleteMediaFile(existingPost.src);
+        } catch (fileErr) {
+          console.error("Failed to delete previous media file:", fileErr);
+        }
       }
-      */
 
       mediaUrl = await uploadMediaFile(mediaFile);
     }
 
-    // Update post in database
-    const updateData: any = {
-      slug: slug.trim(),
-      description: description?.trim() || null,
-      author: author?.trim() || null,
+    const updateData: Partial<MediaItem> = {
+      slug,
+      description: description ?? null,
+      author: author ?? null,
       updatedAt: new Date(),
     };
 
@@ -259,14 +263,11 @@ export async function updatePost(id: number, formData: FormData) {
       updateData.src = mediaUrl;
     }
 
-    /* 
-    const updatedPost = await prisma.mediaItem.update({
+    // Perform the update in DB
+    const updated = await prisma.mediaItem.update({
       where: { id },
-      data: updateData
+      data: updateData,
     });
-    */
-
-    console.log("Updating post:", updateData);
 
     revalidatePath("/dashboard/posts");
     revalidatePath("/gallery");
@@ -275,9 +276,9 @@ export async function updatePost(id: number, formData: FormData) {
     return {
       success: true,
       message: "پست با موفقیت به‌روزرسانی شد",
-      data: updateData,
+      data: updated,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error updating post:", error);
     return {
       success: false,
@@ -290,14 +291,15 @@ export async function updatePost(id: number, formData: FormData) {
   }
 }
 
-export async function deletePost(id: number | string) {
+export async function deletePost(
+  id: number | string,
+): Promise<{ success: boolean; message: string }> {
   try {
     const numericId = Number(id);
     if (Number.isNaN(numericId)) {
       return { success: false, message: "آیدی نامعتبر است" };
     }
 
-    // Find the existing post
     const existingPost = await prisma.mediaItem.findUnique({
       where: { id: numericId },
     });
@@ -306,7 +308,6 @@ export async function deletePost(id: number | string) {
       return { success: false, message: "پست یافت نشد" };
     }
 
-    // Delete associated media file (best-effort)
     if (existingPost.src) {
       try {
         await deleteMediaFile(existingPost.src);
@@ -316,22 +317,19 @@ export async function deletePost(id: number | string) {
           numericId,
           fileErr,
         );
-        // don't abort DB delete — we did our best to remove file
       }
     }
 
-    // Delete post from database
     await prisma.mediaItem.delete({
       where: { id: numericId },
     });
 
-    // Revalidate paths so cached pages update
     revalidatePath("/dashboard/posts");
     revalidatePath("/gallery");
     revalidatePath("/reels");
 
     return { success: true, message: "پست با موفقیت حذف شد" };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error deleting post:", error);
     return {
       success: false,
@@ -341,13 +339,14 @@ export async function deletePost(id: number | string) {
   }
 }
 
-export async function bulkDeletePosts(ids: Array<number | string>) {
+export async function bulkDeletePosts(
+  ids: Array<number | string>,
+): Promise<{ success: boolean; message: string }> {
   try {
     if (!ids || ids.length === 0) {
       return { success: false, message: "هیچ پستی برای حذف انتخاب نشده" };
     }
 
-    // Normalize IDs to numbers and filter invalid entries
     const idsToDelete = ids
       .map((i) => Number(i))
       .filter((n) => !Number.isNaN(n));
@@ -356,13 +355,11 @@ export async function bulkDeletePosts(ids: Array<number | string>) {
       return { success: false, message: "هیچ آیدی معتبری برای حذف موجود نیست" };
     }
 
-    // Fetch existing posts to delete media files
     const existingPosts = await prisma.mediaItem.findMany({
       where: { id: { in: idsToDelete } },
       select: { id: true, src: true },
     });
 
-    // Delete associated files (best-effort)
     for (const p of existingPosts) {
       if (p.src) {
         try {
@@ -373,12 +370,10 @@ export async function bulkDeletePosts(ids: Array<number | string>) {
       }
     }
 
-    // Delete posts from DB
     const deleteResult = await prisma.mediaItem.deleteMany({
       where: { id: { in: idsToDelete } },
     });
 
-    // deleteResult.count gives number deleted (Prisma v4)
     revalidatePath("/dashboard/posts");
     revalidatePath("/gallery");
     revalidatePath("/reels");
@@ -387,7 +382,7 @@ export async function bulkDeletePosts(ids: Array<number | string>) {
       success: true,
       message: `${deleteResult.count ?? idsToDelete.length} پست با موفقیت حذف شد`,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error bulk deleting posts:", error);
     return {
       success: false,

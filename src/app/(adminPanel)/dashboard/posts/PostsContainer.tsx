@@ -1,49 +1,40 @@
 "use client";
 
-import React, {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
-import Image from "next/image";
 import {
+  AlertCircle,
+  AlertTriangle,
+  Calendar,
+  CheckCircle,
+  Download,
   Edit,
   Edit3,
-  Trash2,
   ExternalLink,
-  Search,
-  Filter,
-  SortAsc,
-  SortDesc,
   Eye,
-  Heart,
-  Share2,
-  Calendar,
-  User,
+  FileText,
+  Filter,
   Hash,
+  Heart,
+  Image as ImageIcon,
   MoreHorizontal,
   RefreshCw,
-  Download,
-  Plus,
-  AlertCircle,
-  CheckCircle,
-  X,
-  FileText,
-  Image as ImageIcon,
-  UploadCloud,
-  Video,
-  Play,
-  AlertTriangle,
   Save,
+  Search,
+  Share2,
+  SortAsc,
+  SortDesc,
+  Trash2,
+  UploadCloud,
+  User,
+  Video,
+  X,
 } from "lucide-react";
+import Image from "next/image";
+import React, { useMemo, useRef, useState, useTransition } from "react";
 
 import {
+  bulkDeletePosts,
   createPost,
   deletePost,
-  bulkDeletePosts,
-  updatePost,
 } from "@/actions/postsActions"; // Import your server actions
 
 // MediaItem type based on your Prisma schema
@@ -75,10 +66,6 @@ type FilterType = "all" | "with-media" | "no-media" | "popular";
 
 const maxImageSizeMB = 10;
 const maxVideoSizeMB = 50;
-
-const isDataUrl = (value?: string | null) => {
-  return typeof value === "string" && value.startsWith("data:");
-};
 
 const isVideoFile = (filename?: string) => {
   if (!filename) return false;
@@ -283,7 +270,7 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
 
   // Advanced filtering and sorting
   const filteredAndSortedPosts = useMemo(() => {
-    let filtered = posts.filter((post) => {
+    const filtered = posts.filter((post) => {
       const matchesSearch =
         (post.slug || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (post.description || "")
@@ -309,8 +296,14 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
     });
 
     return filtered.sort((a, b) => {
-      const aVal: any = a[sortField as keyof MediaItem];
-      const bVal: any = b[sortField as keyof MediaItem];
+      const aVal: string | number | Date = a[sortField as keyof MediaItem] as
+        | string
+        | number
+        | Date;
+      const bVal: string | number | Date = b[sortField as keyof MediaItem] as
+        | string
+        | number
+        | Date;
       const multiplier = sortOrder === "asc" ? 1 : -1;
 
       if (typeof aVal === "string" && typeof bVal === "string") {
@@ -588,8 +581,6 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
       }
     });
   };
-
-  
 
   return (
     <div className="space-y-6">
@@ -1150,9 +1141,11 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
                       <div className="flex flex-col gap-4 md:gap-6">
                         <div className="relative overflow-hidden rounded-lg shadow-md">
                           {mediaPreview.type === "image" ? (
-                            <img
+                            <Image
                               src={mediaPreview.url}
                               alt="preview"
+                              width={800}
+                              height={600}
                               className="max-h-60 w-full object-contain md:max-h-80"
                             />
                           ) : (

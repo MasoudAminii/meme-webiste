@@ -1,45 +1,13 @@
 "use client";
 
-import React, {
-  useEffect,
-  useRef,
-  useState,
-  useActionState,
-  Suspense,
-  useOptimistic,
-  useTransition,
-} from "react";
-import Image from "next/image";
 import {
-  Save,
-  Edit3,
-  Eye,
-  BarChart3,
-  Info,
-  FileText,
-  UploadCloud,
-  Trash2,
-  Image as ImageIcon,
-  CheckCircle,
-  Upload,
-  Link as LinkIcon,
-  Palette,
-  Copy,
-  Edit,
-  RefreshCw,
-  AlertCircle,
-  X,
-  AlertTriangle,
-} from "lucide-react";
-import imageCompression from "browser-image-compression";
-import {
-  DndContext,
   closestCenter,
+  DndContext,
+  DragEndEvent,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -47,20 +15,46 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
-  verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import imageCompression from "browser-image-compression";
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle,
+  Copy,
+  Edit,
+  Edit3,
+  Eye,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Palette,
+  RefreshCw,
+  Save,
+  Trash2,
+  Upload,
+  UploadCloud,
+  X,
+} from "lucide-react";
+import Image from "next/image";
+import React, {
+  Suspense,
+  useActionState,
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 // Import your actual server actions
-import { createLink } from "@/actions/linkActions"; // Adjust path as needed
-import { deleteLink } from "@/actions/linkActions"; // Add this import
-import { reorderLinks } from "@/actions/linkActions";
+import { createLink, deleteLink, reorderLinks } from "@/actions/linkActions"; // Adjust path as needed
 
 type ActionState = {
-  success?: boolean;
+  success?: true; // Changed from boolean to true
   error?: string;
   message?: string;
-} | null;
+};
 
 type Link = {
   id: number;
@@ -223,7 +217,6 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
 export default function LinksContainer({ data }: { data: Link[] }) {
   const [activeTab, setActiveTab] = useState<"preview" | "create">("preview");
   const [isEditing, setIsEditing] = useState(false);
-  const [editingLinkId, setEditingLinkId] = useState<number | null>(null);
 
   // Optimistic updates for delete functionality
   const [optimisticLinks, updateOptimisticLinks] = useOptimistic(
@@ -231,7 +224,7 @@ export default function LinksContainer({ data }: { data: Link[] }) {
     (currentLinks, deletedLinkId: number) =>
       currentLinks.filter((link) => link.id !== deletedLinkId),
   );
-  const [isPending, startTransition] = useTransition();
+  const [isPending] = useTransition();
   const [deleteMessage, setDeleteMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -274,53 +267,33 @@ export default function LinksContainer({ data }: { data: Link[] }) {
   const [previewUrl, setPreviewUrl] = useState<string>("default.png");
 
   // Server action state - proper React 19 pattern
-  const [state, formAction, pending] = useActionState<ActionState, FormData>(
-    async (prevState, formData) => {
-      if (selectedFile) {
-        formData.set("logoFile", selectedFile);
-      }
-      return createLink(prevState, formData);
-    },
-    null,
-  );
+  const [state, formAction, pending] = useActionState<
+    ActionState | null,
+    FormData
+  >(async (prevState, formData) => {
+    if (selectedFile) {
+      formData.set("logoFile", selectedFile);
+    }
+    return createLink(prevState ?? undefined, formData);
+  }, null);
+
   const [notification, setNotification] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
 
-  // set notification when server action state changes, but avoid re-setting if identical
+  // set notification when server action state changes
   useEffect(() => {
     if (!state) return;
 
     if (state.success) {
       const msg = state.message || "عملیات با موفقیت انجام شد.";
-      if (
-        !notification ||
-        notification.message !== msg ||
-        notification.type !== "success"
-      ) {
-        setNotification({ type: "success", message: msg });
-      }
+      setNotification({ type: "success", message: msg });
     } else if (state.error) {
       const msg = state.error || "خطایی رخ داد.";
-      if (
-        !notification ||
-        notification.message !== msg ||
-        notification.type !== "error"
-      ) {
-        setNotification({ type: "error", message: msg });
-      }
+      setNotification({ type: "error", message: msg });
     }
-    // only run when `state` changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
-
-  // auto-dismiss notification after 3500ms
-  useEffect(() => {
-    if (!notification) return;
-    const t = setTimeout(() => setNotification(null), 3500);
-    return () => clearTimeout(t);
-  }, [notification]);
 
   // If you also want deleteMessage to auto-dismiss (recommended), add this:
   useEffect(() => {
@@ -489,7 +462,12 @@ export default function LinksContainer({ data }: { data: Link[] }) {
     { label: "Pink Lagoon", g1: "#FF6BCB", g2: "#6B7BFF", angle: 45 },
   ];
 
-  const applyPreset = (p: any) => {
+  const applyPreset = (p: {
+    label: string;
+    g1: string;
+    g2: string;
+    angle: number;
+  }) => {
     setFormData((prev) => ({
       ...prev,
       backgroundType: "gradient",
@@ -507,9 +485,15 @@ export default function LinksContainer({ data }: { data: Link[] }) {
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
+      // Calculate bgCss directly without calling generateBackgroundStyle
+      const bgCss =
+        formData.backgroundType === "solid"
+          ? formData.solidColor || "#3B82F6"
+          : `linear-gradient(${formData.gradientAngle || 90}deg, ${formData.gradientColor1 || "#3B82F6"} ${formData.gradientStop1 || 0}%, ${formData.gradientColor2 || "#8B5CF6"} ${formData.gradientStop2 || 100}%)`;
+
       setFormData((prev) => ({
         ...prev,
-        backgroundCss: generateBackgroundStyle(prev),
+        backgroundCss: bgCss,
       }));
     }, 120);
     return () => {
@@ -549,7 +533,6 @@ export default function LinksContainer({ data }: { data: Link[] }) {
     setProgress(0);
     setUploading(false);
     setIsEditing(false);
-    setEditingLinkId(null);
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -600,7 +583,6 @@ export default function LinksContainer({ data }: { data: Link[] }) {
 
     // Set editing state
     setIsEditing(true);
-    setEditingLinkId(link.id);
     setActiveTab("create");
   };
 
@@ -778,8 +760,6 @@ export default function LinksContainer({ data }: { data: Link[] }) {
     return () => clearTimeout(t);
   }, [notification]);
 
-  const groups = chunkArray(optimisticLinks, 6);
-
   const copyCss = async () => {
     const css = `background: ${generateBackgroundStyle()};`;
     try {
@@ -789,18 +769,6 @@ export default function LinksContainer({ data }: { data: Link[] }) {
       console.error("copy failed", e);
     }
   };
-
-  const suggestedText = formData.textColor || autoTextColor();
-  let contrastAgainstText = 0;
-  try {
-    const sampleHex =
-      formData.backgroundType === "solid"
-        ? formData.solidColor
-        : formData.gradientColor1;
-    contrastAgainstText = contrastRatio(sampleHex, suggestedText);
-  } catch (e) {
-    contrastAgainstText = 1;
-  }
 
   return (
     <>
@@ -1080,9 +1048,11 @@ export default function LinksContainer({ data }: { data: Link[] }) {
                       <div className="bg-primary-40 w-full rounded-xl p-4 shadow-sm md:p-6">
                         <div className="flex flex-col gap-4 md:gap-6">
                           <div className="relative overflow-hidden rounded-lg p-2">
-                            <img
+                            <Image
                               src={previewUrl}
                               alt="preview"
+                              width={240}
+                              height={240}
                               className="max-h-60 w-full object-contain"
                             />
 
@@ -1522,10 +1492,13 @@ export default function LinksContainer({ data }: { data: Link[] }) {
                 >
                   <div className="image-icon h-16 w-16 flex-shrink-0">
                     {previewUrl && previewUrl !== "default.png" ? (
-                      <img
+                      <Image
                         src={previewUrl}
                         alt="Logo"
+                        width={64}
+                        height={64}
                         className="h-full w-full rounded-lg object-contain"
+                        unoptimized
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center rounded-lg bg-white/20">
@@ -1628,7 +1601,7 @@ function LinksGrid({
 }: LinksGridProps) {
   const flatLinks = groups.flat();
   const [items, setItems] = useState(flatLinks);
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1685,8 +1658,20 @@ function LinksGrid({
   );
 }
 
+interface SortableLinkItemProps {
+  link: Link;
+  onDelete: (link: Link) => void;
+  onEdit: (link: Link) => void;
+  isDeleting: boolean;
+}
+
 // New component for sortable items
-function SortableLinkItem({ link, onDelete, onEdit, isDeleting }: any) {
+function SortableLinkItem({
+  link,
+  onDelete,
+  onEdit,
+  isDeleting,
+}: SortableLinkItemProps) {
   const {
     attributes,
     listeners,

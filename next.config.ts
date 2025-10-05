@@ -1,11 +1,22 @@
 import type { NextConfig } from "next";
+import withPWAInit from "@ducanh2912/next-pwa";
+
+const withPWA = withPWAInit({
+  dest: "public",
+  register: true,
+  scope: "/",
+  sw: "sw.js",
+  workboxOptions: {
+    disableDevLogs: true,
+  },
+});
 
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
-      bodySizeLimit: "10mb", // Increase from default 1mb to 10mb
+      bodySizeLimit: "10mb",
     },
   },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);
