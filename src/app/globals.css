@@ -43,10 +43,9 @@
   --color-primary: var(--primary);
   --color-primary-40: var(--primary-40);
   --color-secondary: var(--secondary);
-  --color-accent: var(--accnet);
+  --color-accent: var(--accent);
   --color-light-dark: var(--light-dark);
   --color-light-white: var(--light-white);
-  --color-bg-gradient-1: var(--bg-gradient-1);
   --color-gradient-2: var(--gradient-2);
   --color-gradient-3: var(--gradient-3);
   --color-bg-1: var(--bg-1);
