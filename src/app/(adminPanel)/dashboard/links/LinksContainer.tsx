@@ -664,8 +664,25 @@ export default function LinksContainer({ data }: { data: Link[] }) {
 
       const compressedFile = await imageCompression(file, options);
 
-      // Store the compressed file for form submission
-      setSelectedFile(compressedFile);
+      // ✅ FIX: Get extension from MIME type and create new File with proper name
+      const mimeToExt: Record<string, string> = {
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/gif": ".gif",
+        "image/webp": ".webp",
+      };
+
+      const extension = mimeToExt[compressedFile.type] || ".jpg";
+      const newFileName = `compressed-${Date.now()}${extension}`;
+
+      // Create a new File object with the proper name
+      const renamedFile = new File([compressedFile], newFileName, {
+        type: compressedFile.type,
+      });
+
+      // Store the renamed compressed file for form submission
+      setSelectedFile(renamedFile);
 
       // Create preview URL for display
       const reader = new FileReader();
@@ -697,7 +714,6 @@ export default function LinksContainer({ data }: { data: Link[] }) {
       setSelectedFile(null);
     }
   };
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] ?? null;
     handleFile(f);

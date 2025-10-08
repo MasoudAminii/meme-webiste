@@ -19,8 +19,22 @@ export async function uploadBannerImage(file: File): Promise<string> {
     await mkdir(bannerDir, { recursive: true });
   }
 
-  // Generate unique filename with original extension
-  const fileExtension = path.extname(file.name);
+  // ✅ FIX: Get extension from file.name OR fallback to MIME type
+  let fileExtension = path.extname(file.name);
+
+  // If no extension found in filename, extract from MIME type
+  if (!fileExtension) {
+    const mimeToExt: Record<string, string> = {
+      "image/jpeg": ".jpg",
+      "image/jpg": ".jpg",
+      "image/png": ".png",
+      "image/gif": ".gif",
+      "image/webp": ".webp",
+      "image/svg+xml": ".svg",
+    };
+    fileExtension = mimeToExt[file.type] || ".jpg"; // Default to .jpg if unknown
+  }
+
   const filename = `${uuidv4()}${fileExtension}`;
   const filepath = path.join(bannerDir, filename);
 
