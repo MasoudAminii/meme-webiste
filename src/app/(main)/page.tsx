@@ -115,6 +115,7 @@ async function LinksGrid({ groups }: { groups: Groups }) {
                     width={96}
                     height={96}
                     className="h-full w-full object-contain"
+                    unoptimized
                   />
                 </div>
 
