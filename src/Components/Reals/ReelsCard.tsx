@@ -161,16 +161,18 @@ export default function ReelsCard({
 
   // when the parent says this is active, start playing
   useEffect(() => {
-    if (videoRef.current && isVideo) {
-      videoRef.current.muted = muted;
-      if (isActive) {
-        videoRef.current
-          .play()
-          .then(() => setIsPlaying(true))
-          .catch(() => {});
-      } else {
-        videoRef.current.pause();
-      }
+    const v = videoRef.current;
+    if (!v || !isVideo) return;
+
+    v.muted = muted;
+
+    if (isActive) {
+      v.play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {});
+    } else {
+      v.pause();
+      setIsPlaying(false);
     }
   }, [isActive, isVideo, muted]);
 
@@ -288,65 +290,6 @@ export default function ReelsCard({
     }
   };
 
-  /* Touch/drag handlers for vertical navigation (keeps same behavior) */
-  const touchStartY = useRef<number | null>(null);
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    lastTouchTime.current = Date.now();
-    if (touchStartY.current === null) {
-      handleTap();
-      return;
-    }
-    const endY = e.changedTouches[0].clientY;
-    const delta = endY - touchStartY.current;
-    touchStartY.current = null;
-    if (delta < -80) {
-      if (videoRef.current)
-        try {
-          videoRef.current.pause();
-        } catch {}
-      onNext?.();
-      return;
-    }
-    if (delta > 80) {
-      if (videoRef.current)
-        try {
-          videoRef.current.pause();
-        } catch {}
-      onPrev?.();
-      return;
-    }
-    handleTap();
-  };
-
-  /* Keyboard handlers */
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowUp") {
-        if (videoRef.current)
-          try {
-            videoRef.current.pause();
-          } catch {}
-        onPrev?.();
-      }
-      if (e.key === "ArrowDown") {
-        if (videoRef.current)
-          try {
-            videoRef.current.pause();
-          } catch {}
-        onNext?.();
-      }
-      if (e.key === " ") {
-        e.preventDefault();
-        togglePlayPause();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onNext, onPrev, togglePlayPause]);
-
   const applySeek = useCallback(
     (p: number) => {
       const v = videoRef.current;
@@ -366,11 +309,7 @@ export default function ReelsCard({
   );
 
   return (
-    <div
-      className="relative h-full w-full overflow-hidden rounded-3xl text-white shadow-2xl"
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-    >
+    <div className="relative h-full w-full overflow-hidden bg-black text-white lg:rounded-3xl lg:shadow-2xl">
       {/* MEDIA */}
       {isVideo ? (
         <video
@@ -400,10 +339,8 @@ export default function ReelsCard({
           </div>
         </div>
       )}
-
       {/* overlays */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-black/20" />
-
       {/* Big Heart */}
       <AnimatePresence>
         {showBigHeart && (
@@ -421,7 +358,6 @@ export default function ReelsCard({
           </motion.div>
         )}
       </AnimatePresence>
-
       {isVideo && !isPlaying && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
           <button
@@ -436,7 +372,6 @@ export default function ReelsCard({
           </button>
         </div>
       )}
-
       {/* Top controls */}
       <div className="absolute top-6 right-4 left-4 z-20 flex flex-row-reverse items-center justify-between md:right-6 md:left-6 lg:justify-end">
         {/* Left side - Return button */}
@@ -509,7 +444,7 @@ export default function ReelsCard({
         </div>
       </div>
       {/* Action column */}
-      <div className="absolute bottom-24 left-4 z-20 flex flex-col items-center gap-5 md:left-6">
+      <div className="absolute bottom-24 left-4 z-20 flex flex-col items-center gap-5 md:left-6 lg:left-[calc(100%+1.5rem)]">
         <button
           onClick={toggleLike}
           className="group relative flex flex-col items-center gap-2"
@@ -531,7 +466,6 @@ export default function ReelsCard({
             {likeState.likes}
           </span>
         </button>
-
         <button
           onClick={handleShare}
           className="group relative flex flex-col items-center gap-2"
@@ -580,7 +514,6 @@ export default function ReelsCard({
           )}
         </button>
       </div>
-
       {isVideo && (
         <div
           className="pointer-events-auto absolute right-4 bottom-4 left-4 z-30 md:right-6 md:left-6"

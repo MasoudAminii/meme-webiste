@@ -26,6 +26,8 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const isScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<number | null>(null);
   const currentIndexRef = useRef<number>(initialIndex);
   useEffect(() => {
     currentIndexRef.current = currentIndex;
@@ -128,10 +130,10 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
     observerRef.current = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
-            const idx = Number(
-              (entry.target as HTMLElement).dataset.index ?? 0,
-            );
+          const idx = Number((entry.target as HTMLElement).dataset.index ?? 0);
+
+          // Always update active state based on visibility
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.7) {
             if (idx !== currentIndexRef.current) {
               setCurrentIndex(idx);
               currentIndexRef.current = idx;
@@ -143,7 +145,7 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
       },
       {
         root: container,
-        threshold: [0.6],
+        threshold: [0.6, 0.7], // Add multiple thresholds
         rootMargin: "-10% 0px -10% 0px",
       },
     );
@@ -153,6 +155,51 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
 
     return () => observerRef.current?.disconnect();
   }, [posts, updateUrl]);
+
+  // Natural touch scrolling with snap points
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let touchStartY = 0;
+    let isTouchScrolling = false;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest("button") || target.closest("a")) return;
+
+      touchStartY = e.touches[0].clientY;
+      isTouchScrolling = false;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest("button") || target.closest("a")) return;
+
+      const touchY = e.touches[0].clientY;
+      const deltaY = Math.abs(touchStartY - touchY);
+
+      if (deltaY > 10) {
+        isTouchScrolling = true;
+      }
+    };
+
+    const handleTouchEnd = () => {
+      isTouchScrolling = false;
+    };
+
+    container.addEventListener("touchstart", handleTouchStart, {
+      passive: true,
+    });
+    container.addEventListener("touchmove", handleTouchMove, { passive: true });
+    container.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    return () => {
+      container.removeEventListener("touchstart", handleTouchStart);
+      container.removeEventListener("touchmove", handleTouchMove);
+      container.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, []);
 
   // popstate handling (handles both reels/ and gallery/ URLs)
   useEffect(() => {
@@ -185,14 +232,35 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
   // keyboard nav — keep smooth for a pleasant user feel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent action if already scrolling
+      if (isScrollingRef.current) return;
+
       if (["ArrowDown", "PageDown"].includes(e.key)) {
         e.preventDefault();
+        isScrollingRef.current = true;
+
         const next = Math.min(currentIndexRef.current + 1, posts.length - 1);
         scrollToIndex(next, { behavior: "smooth" });
+
+        if (scrollTimeoutRef.current) {
+          window.clearTimeout(scrollTimeoutRef.current);
+        }
+        scrollTimeoutRef.current = window.setTimeout(() => {
+          isScrollingRef.current = false;
+        }, 800);
       } else if (["ArrowUp", "PageUp"].includes(e.key)) {
         e.preventDefault();
+        isScrollingRef.current = true;
+
         const prev = Math.max(currentIndexRef.current - 1, 0);
         scrollToIndex(prev, { behavior: "smooth" });
+
+        if (scrollTimeoutRef.current) {
+          window.clearTimeout(scrollTimeoutRef.current);
+        }
+        scrollTimeoutRef.current = window.setTimeout(() => {
+          isScrollingRef.current = false;
+        }, 800);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -210,7 +278,7 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
     <>
       <div
         ref={containerRef}
-        className="no-scrollbar -webkit-overflow-scrolling-touch mx-auto flex h-screen w-full snap-y snap-mandatory flex-col overflow-y-auto lg:h-[calc(100vh-4rem)] lg:max-w-[600px] lg:gap-6"
+        className="no-scrollbar -webkit-overflow-scrolling-touch mx-auto flex h-[100dvh] w-full snap-y snap-mandatory flex-col overflow-y-auto lg:h-[calc(100vh-4rem)] lg:gap-6"
         role="list"
       >
         {posts.map((p, i) => {
@@ -224,18 +292,20 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
               key={p.id}
               data-index={i}
               data-slug={p.slug}
-              className="reel-item flex h-screen w-full flex-none snap-start items-center justify-center overflow-hidden bg-black lg:h-[calc(100vh-4rem)] lg:rounded-2xl"
+              className="reel-item flex h-[100dvh] w-full flex-none snap-start items-center justify-center overflow-hidden lg:h-[calc(100vh-4rem)]"
               role="listitem"
             >
-              <ReelsCard
-                src={resolvedSrc}
-                isVideo={p.isVideo}
-                poster={p.poster}
-                initialLikes={p.initialLikes}
-                initialViews={p.initialViews}
-                caption={p.caption}
-                isActive={i === currentIndex}
-              />
+              <div className="relative h-full w-full lg:max-w-[600px]">
+                <ReelsCard
+                  src={resolvedSrc}
+                  isVideo={p.isVideo}
+                  poster={p.poster}
+                  initialLikes={p.initialLikes}
+                  initialViews={p.initialViews}
+                  caption={p.caption}
+                  isActive={i === currentIndex}
+                />
+              </div>
             </div>
           );
         })}
