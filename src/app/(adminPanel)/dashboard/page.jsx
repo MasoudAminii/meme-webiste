@@ -3,13 +3,14 @@ import StatsCards from "@/Components/AdminPanel/StatsCards";
 import QuickActions from "@/Components/AdminPanel/QuickActions";
 import RecentActivity from "@/Components/AdminPanel/RecentActivity";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/authOptions";
 import { redirect } from "next/navigation";
+import { authOptions } from "@/lib/authOptions";
 
 export default async function Dashboard() {
   const session = await getServerSession(authOptions);
+
   if (!session) {
-    redirect("/");
+    redirect("/signin");
   }
 
   return (
