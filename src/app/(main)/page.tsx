@@ -57,7 +57,7 @@ export default async function Home() {
         </div>
       </div>
 
-      <div dir="ltr" className="Links mt-4 max-lg:mb-28 max-sm:mb-20 md:mt-8">
+      <div dir="ltr" className="Links mt-4 max-lg:mb-28 max-sm:mb-22 md:mt-8">
         <Suspense fallback={<LinksGridSkeleton groups={groups} />}>
           <LinksGrid groups={groups} />
         </Suspense>
@@ -79,7 +79,7 @@ async function LinksGrid({ groups }: { groups: Groups }) {
         >
           {group.map((link) => {
             const base =
-              "Link-Item w-full flex sm:min-h-[120px] gap-6 max-[375px]:items-center lg:items-center lg:flex-row max-[375px]:flex-row flex-col justify-between rounded-3xl p-4 sm:p-6 lg:p-8 lg:py-10";
+              "Link-Item flex  gap-6 max-[375px]:items-center lg:items-center lg:flex-row max-[375px]:flex-row flex-col justify-between rounded-3xl p-4 sm:p-6 lg:p-8 lg:py-10";
 
             const dbBg = (link?.backgroundCss || "").trim();
             const useTailwindBg = isTailwindBgClass(dbBg);

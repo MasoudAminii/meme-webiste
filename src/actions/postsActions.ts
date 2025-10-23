@@ -1,18 +1,101 @@
 "use server";
 
 import prisma from "@/lib/db";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { writeFile, mkdir, unlink } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import type { MediaItem } from "@prisma/client";
+import { cookies } from "next/headers";
 
-/**
- * Uploads a media file (image or video) to the public/gallery directory
- * @param file - The file to upload
- * @returns The filename (not full path) that was saved
- */
+export async function incrementView(postId: number) {
+  try {
+    const cookieStore = await cookies();
+    const viewedPosts = cookieStore.get(`viewed_${postId}`);
+
+    if (viewedPosts) {
+      return { success: true, alreadyViewed: true };
+    }
+
+    await prisma.mediaItem.update({
+      where: { id: postId },
+      data: { views: { increment: 1 } },
+    });
+
+    cookieStore.set(`viewed_${postId}`, "true", {
+      maxAge: 60 * 60 * 24,
+      httpOnly: true,
+      sameSite: "strict",
+      path: "/", // Important: set path
+    });
+
+    return { success: true, alreadyViewed: false };
+  } catch (error) {
+    console.error("Error incrementing view:", error);
+    return { success: false, error: "Failed to increment view" };
+  }
+}
+
+export async function toggleLike(postId: number) {
+  try {
+    const cookieStore = await cookies();
+    const cookieName = `liked_${postId}`;
+    const isCurrentlyLiked = cookieStore.get(cookieName)?.value === "true";
+
+    // Update database
+    const updatedPost = await prisma.mediaItem.update({
+      where: { id: postId },
+      data: {
+        likes: {
+          increment: isCurrentlyLiked ? -1 : 1,
+        },
+      },
+      select: { likes: true },
+    });
+
+    // FIX: Don't delete cookie, just set to "false" to prevent navigation
+    (await cookies()).set(cookieName, isCurrentlyLiked ? "false" : "true", {
+      maxAge: 60 * 60 * 24 * 365,
+      httpOnly: true,
+      sameSite: "strict",
+      path: "/",
+    });
+
+    return {
+      success: true,
+      liked: !isCurrentlyLiked,
+      likes: updatedPost.likes,
+    };
+  } catch (error) {
+    console.error("Error toggling like:", error);
+    return {
+      success: false,
+      liked: false,
+      likes: 0,
+    };
+  }
+}
+
+export async function getClientLikeState(postId: number) {
+  const cookieStore = await cookies();
+  const liked = cookieStore.get(`liked_${postId}`)?.value === "true";
+  return { liked };
+}
+
+export async function getInitialLikeState(postId: number) {
+  try {
+    const cookieStore = await cookies();
+    const likedCookie = cookieStore.get(`liked_${postId}`);
+
+    return {
+      liked: likedCookie?.value === "true",
+    };
+  } catch (error) {
+    return { liked: false };
+  }
+}
+
 export async function uploadMediaFile(file: File): Promise<string> {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
@@ -30,10 +113,6 @@ export async function uploadMediaFile(file: File): Promise<string> {
   return filename;
 }
 
-/**
- * Deletes a media file from the public/gallery directory
- * @param filename - The filename to delete
- */
 export async function deleteMediaFile(filename: string): Promise<void> {
   try {
     const filepath = path.join(process.cwd(), "public", "gallery", filename);
@@ -50,9 +129,6 @@ type CreatePostResult =
   | { success: true; message: string; data: MediaItem }
   | { success: false; message: string; data: null };
 
-/**
- * Creates a new post with optional media file
- */
 export async function createPost(
   formData: FormData,
 ): Promise<CreatePostResult> {
@@ -63,7 +139,6 @@ export async function createPost(
     const author = (formData.get("author") as string | null)?.trim() ?? null;
     const mediaFile = formData.get("media") as File | null;
 
-    // Only validate slug uniqueness if user provided one
     if (slug) {
       const existingPost = await prisma.mediaItem.findUnique({
         where: { slug },
@@ -120,7 +195,6 @@ export async function createPost(
 
     const newPostData: Omit<MediaItem, "id" | "createdAt" | "updatedAt"> &
       Partial<Pick<MediaItem, "createdAt" | "updatedAt">> = {
-      // let DB supply defaults where appropriate (e.g., if your schema uses default cuid())
       slug: slug || (undefined as unknown as string),
       src: mediaUrl ?? null,
       description: description ?? null,
@@ -128,15 +202,15 @@ export async function createPost(
       likes: 0 as number,
       shares: 0 as number,
       views: 0 as number,
-      // createdAt/updatedAt will be populated by Prisma if configured
     };
 
     const post = await prisma.mediaItem.create({
-      data: newPostData, // Prisma typing for create input can be strict; this is safe because shape matches
+      data: newPostData,
     });
 
     console.log("Created post:", post);
 
+    // OK to revalidate here since user is in dashboard
     revalidatePath("/dashboard/posts");
     revalidatePath("/gallery");
     revalidatePath("/reels");
@@ -166,9 +240,6 @@ export async function createPost(
   }
 }
 
-/**
- * Updates an existing post
- */
 type UpdatePostResult =
   | { success: true; message: string; data: Partial<MediaItem> }
   | { success: false; message: string; data: null };
@@ -189,7 +260,6 @@ export async function updatePost(
       return { success: false, message: "اسلاگ/عنوان الزامی است", data: null };
     }
 
-    // Retrieve existing post to check previous src (optional)
     const existingPost = await prisma.mediaItem.findUnique({ where: { id } });
     if (!existingPost) {
       return { success: false, message: "پست یافت نشد", data: null };
@@ -240,7 +310,6 @@ export async function updatePost(
         };
       }
 
-      // delete previous file if exists
       if (existingPost.src) {
         try {
           await deleteMediaFile(existingPost.src);
@@ -263,7 +332,6 @@ export async function updatePost(
       updateData.src = mediaUrl;
     }
 
-    // Perform the update in DB
     const updated = await prisma.mediaItem.update({
       where: { id },
       data: updateData,

@@ -39,11 +39,10 @@ const Header = () => {
     <>
       {/* Desktop Nav */}
       <nav
-        className="sticky top-8 z-50 flex max-w-[367px] min-w-[367px] flex-col justify-between gap-8 rounded-[20px] bg-[var(--gradient-2)] p-6 shadow-2xl max-lg:hidden"
+        className="sticky top-8 z-50 flex h-full max-w-[367px] min-w-[367px] flex-col justify-between gap-8 rounded-[20px] bg-[var(--gradient-2)] p-6 shadow-2xl max-lg:hidden"
         style={{
-          height: "clamp(600px, calc(100vh - 4rem), 958px)",
           minHeight: "768px",
-          maxHeight: "958px",
+          maxHeight: "1012px",
           backgroundImage: "var(--gradient-2)",
         }}
       >

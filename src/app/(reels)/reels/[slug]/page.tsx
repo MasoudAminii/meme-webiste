@@ -3,6 +3,8 @@ import React from "react";
 import ClientReelsWrapper from "@/Components/Reals/ClientReelsWrapper";
 import prisma from "@/lib/db";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { notFound } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "سرگرمی و طنز مذهبی",
@@ -10,33 +12,47 @@ export const metadata: Metadata = {
     "بهترین مجموعه میم‌های شیعه، لحظات خنده‌دار و آموزنده مذهبی برای همه‌ی دوستداران طنز و فرهنگ شیعی.",
 };
 
-// Generate static params for popular/recent posts only
+// Only pre-generate the most popular posts
 export async function generateStaticParams() {
   try {
-    // Only pre-generate the most popular or recent 10-20 posts
     const items = await prisma.mediaItem.findMany({
       where: {
         src: { not: null },
+        slug: { not: null },
       },
       select: { slug: true },
-      orderBy: [
-        { views: "desc" }, // Most viewed first
-        { createdAt: "desc" }, // Then most recent
-      ],
-      take: 15, // Pre-generate only top 15 posts
+      orderBy: [{ views: "desc" }, { createdAt: "desc" }],
+      take: 15,
     });
 
-    return items.map((item) => ({
-      slug: item.slug,
-    }));
+    return items
+      .filter((item) => item.slug !== null)
+      .map((item) => ({
+        slug: item.slug as string,
+      }));
   } catch (error) {
     console.warn("Failed to generate static params:", error);
-    return []; // Fallback to dynamic rendering
+    return [];
   }
 }
 
-// Enable ISR (Incremental Static Regeneration)
-export const revalidate = 3600; // Revalidate every hour
+// Helper to get like state from cookies
+async function getLikeStates(postIds: number[]) {
+  try {
+    const cookieStore = await cookies();
+    const likeStates = new Map<number, boolean>();
+
+    for (const id of postIds) {
+      const likedCookie = cookieStore.get(`liked_${id}`);
+      likeStates.set(id, likedCookie?.value === "true"); // ← This line is already correct!
+    }
+
+    return likeStates;
+  } catch (error) {
+    console.error("Error getting like states:", error);
+    return new Map<number, boolean>();
+  }
+}
 
 export default async function Page({
   params,
@@ -45,7 +61,7 @@ export default async function Page({
 }) {
   const { slug } = await params;
 
-  // Fetch a set of reels (adjust order / limit as you want)
+  // Single optimized query to fetch all reels
   const reels = await prisma.mediaItem.findMany({
     where: {
       src: { not: null },
@@ -61,6 +77,7 @@ export default async function Page({
       author: true,
       createdAt: true,
     },
+    orderBy: [{ createdAt: "desc" }],
   });
 
   if (!reels || reels.length === 0) {
@@ -71,39 +88,33 @@ export default async function Page({
     );
   }
 
+  // Get all like states in one go
+  const postIds = reels.map((r) => r.id);
+  const likeStates = await getLikeStates(postIds);
+
+  // Transform data - no extra queries needed
   const allPosts = reels.map((r) => ({
     id: r.id,
     slug: r.slug!,
     src: r.src!,
     isVideo: r.src!.toLowerCase().endsWith(".mp4"),
-    poster: null, // Change from undefined to null (or remove this line entirely)
-    initialLikes: r.likes ?? 0,
-    initialViews: r.views ?? 0,
+    poster: null,
+    initialLikes: r.likes,
+    initialViews: r.views,
+    initialLiked: likeStates.get(r.id) ?? false,
     caption: r.description ?? "",
     author: r.author ?? "@uploader",
   }));
 
-  if (allPosts.length === 0) {
-    return (
-      <div className="RealsMedia min-h-[calc(100vh-9.5rem)]">
-        <p className="mt-2 text-base font-normal">No valid media to show</p>
-      </div>
-    );
-  }
-
-  // Find the index of the current slug
+  // Find the current post index
   const currentIndex = allPosts.findIndex((p) => p.slug === slug);
 
-  // If slug not found, default to first post
+  // If slug not found, show 404
   if (currentIndex === -1) {
-    return (
-      <div className="RealsMedia">
-        <ClientReelsWrapper posts={allPosts} initialIndex={0} />
-      </div>
-    );
+    notFound();
   }
 
-  // Reorder posts: current post first, then all others in sequence
+  // Reorder: current post first, then rest in order
   const reorderedPosts = [
     allPosts[currentIndex],
     ...allPosts.slice(currentIndex + 1),

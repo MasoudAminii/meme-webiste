@@ -1,9 +1,13 @@
 "use client";
 
-import React, { useRef, useState, useEffect, useCallback } from "react";
+import {
+  incrementView,
+  toggleLike
+} from "@/actions/postsActions";
+import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 interface HeartIconProps {
   size?: number;
@@ -94,13 +98,14 @@ const PlayPauseIcon = ({
 
 /* ----------------------- Types ----------------------- */
 type ReelsCardProps = {
+  postId: number;
   src: string;
   isVideo?: boolean;
   poster?: string | null;
   initialLikes?: number;
   initialViews?: number;
+  initialLiked?: boolean; // ADD THIS
   caption?: string;
-  // REMOVE: author?: string;
   isActive?: boolean;
   onNext?: () => void;
   onPrev?: () => void;
@@ -115,26 +120,33 @@ const formatTime = (s: number) => {
 
 /* ----------------------- ReelsCard (with scrubber) ----------------------- */
 export default function ReelsCard({
+  postId,
   src,
   isVideo = false,
   poster,
   initialLikes = 0,
   initialViews = 0,
+  initialLiked = false,
   caption = "",
   isActive = false,
   onNext,
   onPrev,
 }: ReelsCardProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [likeState, setLikeState] = useState<{ liked: boolean; likes: number }>(
-    { liked: false, likes: initialLikes },
-  );
+
+  // Single state that tracks both actual and optimistic values
+  // Simple state - no useOptimistic
+  const [likeData, setLikeData] = useState({
+    liked: initialLiked,
+    likes: initialLikes,
+  });
+
   const [views, setViews] = useState<number>(initialViews);
   const [showBigHeart, setShowBigHeart] = useState(false);
-  const [hasViewed, setHasViewed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [muted, setMuted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasViewed, setHasViewed] = useState(false);
 
   // Progress / seeking state
   const [progress, setProgress] = useState<number>(0); // 0..1
@@ -144,6 +156,20 @@ export default function ReelsCard({
   const lastTouchTime = useRef<number>(0);
   const likeThrottleRef = useRef<boolean>(false);
   const lastTap = useRef<number>(0);
+
+  // Track view when component becomes active
+  useEffect(() => {
+    if (isActive && !hasViewed) {
+      setHasViewed(true);
+
+      // Call server action to increment view
+      incrementView(postId).then((result) => {
+        if (result.success && !result.alreadyViewed) {
+          setViews((prev) => prev + 1);
+        }
+      });
+    }
+  }, [isActive, hasViewed, postId]);
 
   // sync playing/paused state
   useEffect(() => {
@@ -204,24 +230,29 @@ export default function ReelsCard({
     };
   }, [isVideo, seeking]);
 
-  useEffect(() => {
-    if (!hasViewed) {
-      setViews((p) => p + 1);
-      setHasViewed(true);
-    }
-    return () => {};
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const toggleLike = () => {
+  const handleToggleLike = useCallback(() => {
     if (likeThrottleRef.current) return;
+
     likeThrottleRef.current = true;
-    setTimeout(() => (likeThrottleRef.current = false), 300);
-    setLikeState((prev) => {
-      const newLiked = !prev.liked;
-      return { liked: newLiked, likes: prev.likes + (prev.liked ? -1 : 1) };
+    setTimeout(() => (likeThrottleRef.current = false), 600);
+
+    // Optimistic update - instant UI feedback
+    setLikeData((prev) => ({
+      liked: !prev.liked,
+      likes: prev.likes + (prev.liked ? -1 : 1),
+    }));
+
+    // Call server in background
+    toggleLike(postId).then((result) => {
+      if (result.success) {
+        // Update with actual server values
+        setLikeData({
+          liked: result.liked,
+          likes: result.likes,
+        });
+      }
     });
-  };
+  }, [postId]);
 
   const togglePlayPause = useCallback(
     (e?: React.SyntheticEvent) => {
@@ -248,27 +279,6 @@ export default function ReelsCard({
     const now = Date.now();
     if (now - lastTouchTime.current < 600) return; // ignore ghost clicks
     togglePlayPause();
-  };
-
-  const handleTap = () => {
-    const now = Date.now();
-    const timeDiff = now - lastTap.current;
-    if (timeDiff < 300 && lastTap.current > 0) {
-      setShowBigHeart(true);
-      setLikeState((prev) =>
-        prev.liked ? prev : { liked: true, likes: prev.likes + 1 },
-      );
-      setTimeout(() => setShowBigHeart(false), 900);
-      lastTap.current = 0;
-    } else {
-      setTimeout(() => {
-        const currentTime = Date.now();
-        if (currentTime - now >= 300) {
-          if (isVideo) togglePlayPause();
-        }
-      }, 300);
-      lastTap.current = now;
-    }
   };
 
   const handleShare = async () => {
@@ -315,16 +325,28 @@ export default function ReelsCard({
         <video
           ref={videoRef}
           src={src}
-          poster={poster ?? undefined} // Convert null to undefined
+          poster={poster ?? undefined}
           loop
           playsInline
           preload="metadata"
           onClick={handleClickMedia}
+          onTouchEnd={(e) => {
+            e.stopPropagation();
+            const now = Date.now();
+            lastTouchTime.current = now;
+            // handleTap();
+          }}
           className="absolute inset-0 h-full w-full object-contain shadow-2xl lg:rounded-3xl"
         />
       ) : (
         <div
           onClick={handleClickMedia}
+          onTouchEnd={(e) => {
+            e.stopPropagation();
+            const now = Date.now();
+            lastTouchTime.current = now;
+            // handleTap();
+          }}
           className="absolute inset-0 flex items-center justify-center"
         >
           <div className="relative h-full w-full">
@@ -444,26 +466,26 @@ export default function ReelsCard({
         </div>
       </div>
       {/* Action column */}
-      <div className="absolute bottom-24 left-4 z-20 flex flex-col items-center gap-5 md:left-6 lg:left-[calc(100%+1.5rem)]">
+      <div className="absolute bottom-24 left-4 z-20 flex flex-col items-center gap-5 md:left-6 lg:left-6">
         <button
-          onClick={toggleLike}
+          onClick={handleToggleLike}
           className="group relative flex flex-col items-center gap-2"
           aria-label="like"
         >
           <div
-            className={`relative flex h-16 w-16 items-center justify-center rounded-full border-2 shadow-2xl backdrop-blur-md transition-all duration-500 ${likeState.liked ? "border-red-400/60 bg-red-600/20" : "border-white/30 bg-black/40 hover:border-white/50 hover:bg-black/60"}`}
+            className={`relative flex h-16 w-16 items-center justify-center rounded-full border-2 shadow-2xl backdrop-blur-md transition-all duration-500 ${likeData.liked ? "border-red-400/60 bg-red-600/20" : "border-white/30 bg-black/40 hover:border-white/50 hover:bg-black/60"}`}
           >
             <div className="absolute inset-0 rounded-full bg-white/10" />
             <motion.div
-              key={`heart-pulse-${likeState.likes}`}
-              animate={likeState.liked ? { scale: [1, 1.18, 1] } : { scale: 1 }}
+              key={`heart-pulse-${likeData.likes}`}
+              animate={likeData.liked ? { scale: [1, 1.18, 1] } : { scale: 1 }}
               transition={{ duration: 0.45, ease: "easeOut" }}
             >
-              <HeartIcon size={32} filled={likeState.liked} />
+              <HeartIcon size={32} filled={likeData.liked} />
             </motion.div>
           </div>
           <span className="text-sm font-bold tracking-wide drop-shadow-lg">
-            {likeState.likes}
+            {likeData.likes}
           </span>
         </button>
         <button

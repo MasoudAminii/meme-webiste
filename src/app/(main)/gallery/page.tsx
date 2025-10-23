@@ -91,8 +91,6 @@ export default async function GalleryPage() {
                     <span className="text-xl font-bold text-white">باز کن</span>
                   </div>
                 </Link>
-                <ShareButton src={fullMediaPath} />
-                {/* Pass full path to share button too */}
               </div>
             );
           }

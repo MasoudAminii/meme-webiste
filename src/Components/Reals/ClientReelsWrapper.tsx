@@ -9,9 +9,10 @@ type Post = {
   slug: string | null;
   src: string;
   isVideo: boolean;
-  poster?: string | null; // Change this to allow null
+  poster?: string | null;
   initialLikes: number;
   initialViews: number;
+  initialLiked?: boolean; // ADD THIS
   caption: string;
   author: string;
 };
@@ -43,7 +44,6 @@ const isVideoFile = (src: string): boolean => {
 };
 
 export default function ClientReelsWrapper({ posts, initialIndex = 0 }: Props) {
-  // Transform posts to ensure proper paths and video detection
   const transformedPosts = posts.map((post) => {
     const resolvedSrc = resolveMediaPath(post.src);
 
@@ -53,10 +53,10 @@ export default function ClientReelsWrapper({ posts, initialIndex = 0 }: Props) {
       isVideo:
         post.isVideo ??
         (typeof post.src === "string" ? isVideoFile(resolvedSrc) : false),
-      // Ensure we have proper defaults
-      initialLikes: post.initialLikes ?? post.initialLikes ?? 0,
-      initialViews: post.initialViews ?? post.initialViews ?? 0,
-      caption: post.caption ?? post.caption ?? "",
+      initialLikes: post.initialLikes ?? 0,
+      initialViews: post.initialViews ?? 0,
+      initialLiked: post.initialLiked ?? false, // This line is correct
+      caption: post.caption ?? "",
       author: post.author ?? "Unknown",
     };
   });

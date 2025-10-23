@@ -75,6 +75,16 @@ body {
   font-family: var(--font-estedad), var(--font-inter), sans-serif;
 }
 
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 h1,
 h2,
 h3,
