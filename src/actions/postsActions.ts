@@ -1,13 +1,13 @@
 "use server";
 
 import prisma from "@/lib/db";
-import { revalidatePath, revalidateTag } from "next/cache";
-import { writeFile, mkdir, unlink } from "fs/promises";
+import type { MediaItem } from "@prisma/client";
 import { existsSync } from "fs";
+import { mkdir, unlink, writeFile } from "fs/promises";
+import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import type { MediaItem } from "@prisma/client";
-import { cookies } from "next/headers";
 
 export async function incrementView(postId: number) {
   try {
@@ -91,7 +91,7 @@ export async function getInitialLikeState(postId: number) {
     return {
       liked: likedCookie?.value === "true",
     };
-  } catch (error) {
+  } catch {
     return { liked: false };
   }
 }

@@ -1,10 +1,9 @@
 // app/gallery/page.tsx
-import Link from "next/link";
-import ShareButton from "./ShareButton"; // adjust path if different
-import HoverVideo from "./HoverVideo"; // adjust path if different
-import Image from "next/image";
 import prisma from "@/lib/db";
 import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import HoverVideo from "./HoverVideo"; // adjust path if different
 
 export const metadata: Metadata = {
   title: "گالری میم‌ها",

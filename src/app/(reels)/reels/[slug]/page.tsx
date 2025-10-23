@@ -12,6 +12,8 @@ export const metadata: Metadata = {
     "بهترین مجموعه میم‌های شیعه، لحظات خنده‌دار و آموزنده مذهبی برای همه‌ی دوستداران طنز و فرهنگ شیعی.",
 };
 
+export const dynamic = "force-dynamic";
+
 // Only pre-generate the most popular posts
 export async function generateStaticParams() {
   try {

@@ -1,10 +1,7 @@
 "use client";
 
-import {
-  incrementView,
-  toggleLike
-} from "@/actions/postsActions";
-import { AnimatePresence, motion } from "framer-motion";
+import { incrementView, toggleLike } from "@/actions/postsActions";
+import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -107,8 +104,6 @@ type ReelsCardProps = {
   initialLiked?: boolean; // ADD THIS
   caption?: string;
   isActive?: boolean;
-  onNext?: () => void;
-  onPrev?: () => void;
 };
 /* ----------------------- Helper: format seconds to mm:ss ----------------------- */
 const formatTime = (s: number) => {
@@ -129,8 +124,6 @@ export default function ReelsCard({
   initialLiked = false,
   caption = "",
   isActive = false,
-  onNext,
-  onPrev,
 }: ReelsCardProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -142,7 +135,6 @@ export default function ReelsCard({
   });
 
   const [views, setViews] = useState<number>(initialViews);
-  const [showBigHeart, setShowBigHeart] = useState(false);
   const [copied, setCopied] = useState(false);
   const [muted, setMuted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -155,7 +147,6 @@ export default function ReelsCard({
 
   const lastTouchTime = useRef<number>(0);
   const likeThrottleRef = useRef<boolean>(false);
-  const lastTap = useRef<number>(0);
 
   // Track view when component becomes active
   useEffect(() => {
@@ -364,22 +355,7 @@ export default function ReelsCard({
       {/* overlays */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-black/20" />
       {/* Big Heart */}
-      <AnimatePresence>
-        {showBigHeart && (
-          <motion.div
-            key="big-heart"
-            initial={{ scale: 0.2, opacity: 0 }}
-            animate={{ scale: 1.2, opacity: 1 }}
-            exit={{ scale: 1.6, opacity: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center"
-          >
-            <div className="relative">
-              <HeartIcon size={140} filled={true} />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
       {isVideo && !isPlaying && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
           <button

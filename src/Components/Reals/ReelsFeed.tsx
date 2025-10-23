@@ -111,6 +111,7 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
   );
 
   // Initial scroll - only run once
+  // Initial scroll - only run once
   useEffect(() => {
     if (hasInitializedRef.current) return;
     hasInitializedRef.current = true;
@@ -130,7 +131,8 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
     }, 0);
 
     return () => window.clearTimeout(t);
-  }, []); // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally empty - only run once on mount
 
   // IntersectionObserver - with better throttling
   useEffect(() => {
@@ -187,12 +189,10 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
     const container = containerRef.current;
     if (!container) return;
 
-    let touchStartY = 0;
-
     const handleTouchStart = (e: TouchEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest("button") || target.closest("a")) return;
-      touchStartY = e.touches[0].clientY;
+      // Touch handling - currently just preventing interference with buttons/links
     };
 
     container.addEventListener("touchstart", handleTouchStart, {
