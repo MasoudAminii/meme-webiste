@@ -30,12 +30,14 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import React, { useMemo, useRef, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 
 import {
   bulkDeletePosts,
   createPost,
   deletePost,
-} from "@/actions/postsActions"; // Import your server actions
+  updatePost, // ADD THIS
+} from "@/actions/postsActions";
 
 // MediaItem type based on your Prisma schema
 interface MediaItem {
@@ -228,7 +230,12 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
 };
 
 const PostsContainer = ({ data }: { data: MediaItem[] }) => {
-  const [activeTab, setActiveTab] = useState<"preview" | "create">("preview");
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+
+  const [activeTab, setActiveTab] = useState<"preview" | "create" | "edit">(
+    tabParam === "create" ? "create" : "preview",
+  );
   const [posts, setPosts] = useState<MediaItem[]>(data || []);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<SortField>("createdAt");
@@ -239,6 +246,9 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [editingPost, setEditingPost] = useState<MediaItem | null>(null);
+  const [isUpdating, startUpdatingTransition] = useTransition();
+  const [removeTheMedia, setRemoveTheMedia] = useState(false);
 
   // Delete modal state
   const [deleteModal, setDeleteModal] = useState<{
@@ -324,10 +334,31 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
     setTimeout(() => setNotification(null), 4000);
   };
 
+  const resetForm = () => {
+    setSlug("");
+    setDescription("");
+    setAuthor("");
+    setMediaPreview(null);
+    setRemoveTheMedia(false);
+    setError(null);
+    setEditingPost(null);
+    if (fileRef.current) {
+      fileRef.current.value = "";
+    }
+  };
+
   // Server Actions
   const handleEdit = async (id: number) => {
-    // Navigate to edit page or open edit modal
-    showNotification("success", `پست ${id} برای ویرایش باز شد`);
+    const post = posts.find((p) => p.id === id);
+    if (!post) return;
+
+    setEditingPost(post);
+    setSlug(post.slug || "");
+    setDescription(post.description || "");
+    setAuthor(post.author || "");
+    setMediaPreview(null);
+    setRemoveTheMedia(false);
+    setActiveTab("edit");
   };
 
   // --- Delete modal handlers ---
@@ -506,6 +537,7 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
         type: isVideo ? "video" : "image",
         file: file,
       });
+      setRemoveTheMedia(false); // ADD THIS LINE
     };
     reader.readAsDataURL(file);
   };
@@ -528,9 +560,9 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
     e.preventDefault();
     setDragActive(false);
   };
-
-  const removeMedia = () => {
+  const removeMediaHandler = () => {
     setMediaPreview(null);
+    setRemoveTheMedia(true);
     if (fileRef.current) {
       fileRef.current.value = "";
     }
@@ -573,7 +605,49 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
         setSlug("");
         setDescription("");
         setAuthor("");
-        removeMedia();
+        resetForm();
+        setActiveTab("preview");
+        showNotification("success", result.message);
+      } else {
+        showNotification("error", result.message);
+      }
+    });
+  };
+
+  // Update post handler
+  const handleUpdatePost = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+
+    if (!editingPost) return;
+
+    const formData = new FormData();
+    if (slug.trim()) {
+      formData.append("slug", slug.trim());
+    }
+    if (description.trim()) formData.append("description", description.trim());
+    if (author.trim()) formData.append("author", author.trim());
+    if (mediaPreview?.file) formData.append("media", mediaPreview.file);
+    if (removeTheMedia) formData.append("removeMedia", "true");
+
+    startUpdatingTransition(async () => {
+      const result = await updatePost(editingPost.id, formData);
+      if (result.success && result.data) {
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === editingPost.id
+              ? {
+                  ...p,
+                  slug: result.data.slug ?? p.slug,
+                  description: result.data.description ?? p.description,
+                  author: result.data.author ?? p.author,
+                  src: result.data.src !== undefined ? result.data.src : p.src,
+                  updatedAt: result.data.updatedAt ?? p.updatedAt,
+                }
+              : p,
+          ),
+        );
+
+        resetForm();
         setActiveTab("preview");
         showNotification("success", result.message);
       } else {
@@ -662,7 +736,10 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
 
       <div className="mb-6 flex gap-2">
         <button
-          onClick={() => setActiveTab("preview")}
+          onClick={() => {
+            setActiveTab("preview");
+            resetForm();
+          }}
           className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm transition-all ${
             activeTab === "preview"
               ? "bg-white text-gray-900 shadow"
@@ -672,7 +749,10 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
           <Eye size={16} /> پیش‌ نمایش
         </button>
         <button
-          onClick={() => setActiveTab("create")}
+          onClick={() => {
+            setActiveTab("create");
+            resetForm();
+          }}
           className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm transition-all ${
             activeTab === "create"
               ? "bg-white text-gray-900 shadow"
@@ -681,6 +761,16 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
         >
           <Edit3 size={16} /> ایجاد کنید
         </button>
+        {activeTab === "edit" && (
+          <button
+            onClick={() => {
+              setActiveTab("edit");
+            }}
+            className="flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm text-gray-900 shadow transition-all"
+          >
+            <Edit size={16} /> ویرایش پست
+          </button>
+        )}
       </div>
 
       {activeTab === "preview" && (
@@ -1200,7 +1290,7 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
 
                             <button
                               type="button"
-                              onClick={() => !isPending && removeMedia()}
+                              onClick={() => !isPending && removeMediaHandler()}
                               disabled={isPending}
                               className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50 md:px-4 md:text-sm"
                             >
@@ -1300,6 +1390,345 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
 
                     {/* Text */}
                     <span> {isPending ? "در حال ذخیره..." : "ایجاد پست"}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {activeTab === "edit" && editingPost && (
+        <div>
+          <div className="bg-bg-1 mb-4 rounded-lg p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold">
+                ویرایش پست #{editingPost.id}
+              </h2>
+              <button
+                onClick={() => {
+                  resetForm();
+                  setActiveTab("preview");
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+
+          <form className="space-y-8" onSubmit={handleUpdatePost}>
+            <div className="bg-bg-1 rounded-lg p-8 shadow-sm">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="rounded-lg bg-blue-100 p-3">
+                  <ImageIcon size={24} className="text-blue-700" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">رسانه و محتوا</h3>
+
+                  <p className="text-light-dark mt-1 text-sm">
+                    تصویر یا ویدیو و توضیحات پست را مدیریت کنید
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-6">
+                <label className="text-light-dark mb-3 block text-base font-semibold">
+                  فایل رسانه (تصویر یا ویدیو)
+                </label>
+                {/* Show existing media if available */}
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Upload Section */}
+
+                  <div className="image-upload w-full">
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/*,video/*"
+                      onChange={(e) => handleMediaUpload(e)}
+                      className="hidden"
+                      name="media"
+                      disabled={isUpdating} // instead of isPending
+                    />
+
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={openFileDialog}
+                      onDrop={handleDrop}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      aria-label="بارگذاری رسانه"
+                      className={`group relative h-full cursor-pointer overflow-hidden rounded-xl border-2 py-20 transition-all duration-300 select-none ${dragActive ? "border-light-dark bg-bg-1 scale-[1.02] shadow-lg" : "bg-bg-1 border-light-dark hover:border-accent hover:bg-accent/10 border-dashed"}`}
+                    >
+                      <div className="h-full p-4 md:p-8">
+                        <div className="flex h-full flex-col items-center justify-center text-center">
+                          <div
+                            className={`mb-3 rounded-full p-3 transition-all duration-300 md:mb-4 md:p-4 ${dragActive ? "scale-110 bg-indigo-100" : "bg-gray-100 group-hover:scale-105 group-hover:bg-indigo-100"}`}
+                          >
+                            <UploadCloud
+                              size={32}
+                              className={`transition-colors duration-300 ${dragActive ? "text-indigo-600" : "text-gray-500 group-hover:text-indigo-600"}`}
+                            />
+                          </div>
+
+                          <div className="space-y-1 md:space-y-2">
+                            <h4 className="text-base font-semibold md:text-lg">
+                              {dragActive
+                                ? "فایل را رها کنید"
+                                : "تصویر یا ویدیو را انتخاب کنید"}
+                            </h4>
+                            <p className="text-light-dark text-xs md:text-sm">
+                              فایل را بکشید و رها کنید یا برای انتخاب کلیک کنید
+                            </p>
+                            <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-[10px] md:mt-3 md:text-xs">
+                              <span className="bg-primary-40 rounded-full border px-2 py-1">
+                                تصویر: حداکثر {maxImageSizeMB}MB
+                              </span>
+                              <span className="bg-primary-40 rounded-full border px-2 py-1">
+                                ویدیو: حداکثر {maxVideoSizeMB}MB
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Hover gradient */}
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-indigo-500/0 to-purple-500/0 transition-all duration-300 group-hover:from-indigo-500/5 group-hover:to-purple-500/5" />
+                    </div>
+
+                    {error && (
+                      <div className="mt-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 md:mt-4 md:gap-3 md:px-4 md:py-3 md:text-sm">
+                        <div className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-red-100 md:h-5 md:w-5">
+                          <div className="h-1.5 w-1.5 rounded-full bg-red-600 md:h-2 md:w-2"></div>
+                        </div>
+                        <span>{error}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Preview Section */}
+                  {(mediaPreview || (editingPost.src && !removeTheMedia)) && (
+                    <div className="bg-primary-40 w-full rounded-xl p-4 shadow-sm md:p-6">
+                      <div className="flex flex-col gap-4 md:gap-6">
+                        <div className="relative overflow-hidden rounded-lg shadow-md">
+                          {mediaPreview ? (
+                            // Show new uploaded media preview
+                            mediaPreview.type === "image" ? (
+                              <Image
+                                src={mediaPreview.url}
+                                alt="preview"
+                                width={800}
+                                height={600}
+                                className="max-h-60 w-full object-contain md:max-h-80"
+                              />
+                            ) : (
+                              <video
+                                src={mediaPreview.url}
+                                controls
+                                className="max-h-60 w-full object-contain md:max-h-80"
+                              >
+                                مرورگر شما از پخش ویدیو پشتیبانی نمی‌کند.
+                              </video>
+                            )
+                          ) : (
+                            // Show existing media from post
+                            editingPost.src &&
+                            (isVideoFile(editingPost.src) ? (
+                              <video
+                                src={`/gallery/${editingPost.src}`}
+                                controls
+                                className="max-h-60 w-full object-contain md:max-h-80"
+                              >
+                                مرورگر شما از پخش ویدیو پشتیبانی نمی‌کند.
+                              </video>
+                            ) : (
+                              <Image
+                                src={`/gallery/${editingPost.src}`}
+                                alt="current media"
+                                width={800}
+                                height={600}
+                                className="max-h-60 w-full object-contain md:max-h-80"
+                              />
+                            ))
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2 md:mb-4">
+                            <h4 className="mb-1 flex items-center gap-2 text-sm font-semibold md:text-base">
+                              {mediaPreview ? (
+                                mediaPreview.type === "video" ? (
+                                  <>
+                                    <Video size={16} />
+                                    ویدیو انتخاب شده
+                                  </>
+                                ) : (
+                                  <>
+                                    <ImageIcon size={16} />
+                                    تصویر انتخاب شده
+                                  </>
+                                )
+                              ) : isVideoFile(editingPost.src || "") ? (
+                                <>
+                                  <Video size={16} />
+                                  ویدیو فعلی
+                                </>
+                              ) : (
+                                <>
+                                  <ImageIcon size={16} />
+                                  تصویر فعلی
+                                </>
+                              )}
+                            </h4>
+                            {mediaPreview ? (
+                              <>
+                                <p className="text-light-dark text-xs md:text-sm">
+                                  نام فایل: {mediaPreview.file.name}
+                                </p>
+                                <p className="text-light-dark text-xs md:text-sm">
+                                  اندازه:{" "}
+                                  {(
+                                    mediaPreview.file.size /
+                                    (1024 * 1024)
+                                  ).toFixed(2)}{" "}
+                                  MB
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-light-dark text-xs md:text-sm">
+                                نام فایل: {editingPost.src}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex flex-col items-stretch gap-2 md:flex-row md:items-center md:gap-3">
+                            <button
+                              type="button"
+                              onClick={() => !isUpdating && openFileDialog()}
+                              disabled={isUpdating}
+                              className="border-light-dark flex cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors disabled:opacity-50 md:px-4 md:text-sm"
+                            >
+                              <UploadCloud size={14} />
+                              تغییر فایل
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                !isUpdating && removeMediaHandler()
+                              }
+                              disabled={isUpdating}
+                              className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50 md:px-4 md:text-sm"
+                            >
+                              <Trash2 size={14} />
+                              حذف
+                            </button>
+
+                            <div className="flex items-center gap-2 text-xs font-medium text-green-700 md:ml-auto md:text-sm">
+                              <CheckCircle size={16} />
+                              آماده برای ذخیره
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-bg-1 rounded-lg p-8 shadow-sm">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="rounded-lg bg-blue-100 p-3">
+                  <FileText size={24} className="text-blue-700" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">اطلاعات پایه پست</h3>
+                  <p className="text-light-dark mt-1 text-sm">
+                    عنوان، توضیحات و نویسنده پست را وارد کنید
+                  </p>
+                </div>
+              </div>
+              <div>
+                <div className="mb-4 grid gap-6 md:grid-cols-2">
+                  <div>
+                    <label className="text-light-dark mb-2 block text-base font-semibold">
+                      اسلاگ / عنوان پست *
+                    </label>
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={slug}
+                        onChange={(e) => setSlug(e.target.value)}
+                        placeholder="عنوان یا اسلاگ پست را وارد کنید (اختیاری)..."
+                        disabled={isUpdating} // instead of isPending
+                        className={`w-full rounded-lg border border-gray-300 px-4 py-3 text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none disabled:opacity-50`}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-light-dark mb-2 block text-base font-semibold">
+                      نویسنده
+                    </label>
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={author}
+                        onChange={(e) => setAuthor(e.target.value)}
+                        placeholder="نام نویسنده..."
+                        disabled={isUpdating} // instead of isPending
+                        className={`w-full rounded-lg border border-gray-300 px-4 py-3 text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none disabled:opacity-50`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-light-dark mb-2 block text-base font-semibold">
+                    توضیحات
+                  </label>
+                  <div className="space-y-2">
+                    <textarea
+                      rows={4}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="توضیحات پست را وارد کنید..."
+                      disabled={isUpdating} // instead of isPending
+                      className={`w-full rounded-lg border border-gray-300 px-4 py-3 text-sm transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none disabled:opacity-50`}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={isUpdating}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {isUpdating ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        در حال به‌روزرسانی...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        به‌روزرسانی پست
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetForm();
+                      setActiveTab("preview");
+                    }}
+                    className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-6 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    انصراف
                   </button>
                 </div>
               </div>

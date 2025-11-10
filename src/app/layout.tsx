@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
 import { Inter } from "next/font/google";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/react";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -143,6 +145,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
   return (
     <html lang="en" dir="rtl" suppressHydrationWarning>
       <body
@@ -154,6 +157,7 @@ export default function RootLayout({
           enableSystem={true}
         >
           {children}
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>

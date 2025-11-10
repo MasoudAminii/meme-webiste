@@ -4,6 +4,7 @@ import Image from "next/image";
 import prisma from "@/lib/db"; // adjust path if needed
 import type { Link } from "@prisma/client";
 import { Suspense } from "react";
+import ThemeBanner from "@/Components/Structure/ThemeBanner";
 
 function chunkArray<T>(arr: T[], size: number): T[][] {
   const res: T[][] = [];
@@ -36,28 +37,10 @@ export default async function Home() {
   return (
     <div>
       <div className="Banner">
-        <div
-          className="banner-image overflow-hidden rounded-[20px]"
-          style={{ boxShadow: "rgba(99, 99, 99, 0.2) 0px 2px 8px 0px" }}
-        >
-          <Image
-            src="/banner/shia-meme-banner.jpg"
-            alt="شیعه میم"
-            width={1200}
-            height={400}
-            unoptimized
-            priority
-            style={{
-              width: "100%",
-              height: "auto",
-              objectFit: "contain",
-            }}
-            className="h-64 sm:h-80"
-          />
-        </div>
+        <ThemeBanner />
       </div>
 
-      <div dir="ltr" className="Links mt-4 max-lg:mb-28 max-sm:mb-22 md:mt-8">
+      <div dir="ltr" className="Links mt-4 max-lg:mb-28 max-sm:mb-24 md:mt-8">
         <Suspense fallback={<LinksGridSkeleton groups={groups} />}>
           <LinksGrid groups={groups} />
         </Suspense>

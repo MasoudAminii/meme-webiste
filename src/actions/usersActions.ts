@@ -4,6 +4,9 @@ import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import type { User } from "@prisma/client";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/authOptions";
+import { logActivity } from "@/actions/activityActions";
 
 // You can replace this with your actual Prisma client import
 // import { prisma } from "@/lib/prisma";
@@ -13,6 +16,7 @@ import type { User } from "@prisma/client";
  */
 export async function createUser(formData: FormData) {
   try {
+    const session = await getServerSession(authOptions);
     const username = formData.get("username") as string;
     const password = formData.get("password") as string;
     const role = formData.get("role") as "ADMIN" | "WRITER";
@@ -70,6 +74,16 @@ export async function createUser(formData: FormData) {
 
     console.log("Created user:", user);
 
+    if (session?.user) {
+      await logActivity({
+        type: "post",
+        userId: Number(session.user.id),
+        userName: session.user.username,
+        action: "کاربر جدیدی ایجاد کرد",
+        metadata: { newUserId: user.id, newUsername: username.trim() },
+      });
+    }
+
     // Revalidate paths to show updated data
     revalidatePath("/dashboard/users");
     revalidatePath("/admin/users");
@@ -111,6 +125,7 @@ export async function createUser(formData: FormData) {
  */
 export async function updateUser(id: number, formData: FormData) {
   try {
+    const session = await getServerSession(authOptions);
     const username = formData.get("username") as string;
     const password = formData.get("password") as string;
     const role = formData.get("role") as "ADMIN" | "WRITER";
@@ -178,6 +193,16 @@ export async function updateUser(id: number, formData: FormData) {
 
     console.log("Updated user:", updatedUser);
 
+    if (session?.user) {
+      await logActivity({
+        type: "edit",
+        userId: Number(session.user.id),
+        userName: session.user.username,
+        action: "کاربری را ویرایش کرد",
+        metadata: { editedUserId: id, editedUsername: username.trim() },
+      });
+    }
+
     revalidatePath("/dashboard/users");
     revalidatePath("/admin/users");
 
@@ -204,6 +229,7 @@ export async function updateUser(id: number, formData: FormData) {
  */
 export async function deleteUser(id: number | string) {
   try {
+    const session = await getServerSession(authOptions);
     const numericId = Number(id);
     if (Number.isNaN(numericId)) {
       return { success: false, message: "آیدی نامعتبر است" };
@@ -237,6 +263,18 @@ export async function deleteUser(id: number | string) {
       where: { id: numericId },
     });
 
+    if (session?.user) {
+      await logActivity({
+        type: "delete",
+        userId: Number(session.user.id),
+        userName: session.user.username,
+        action: "کاربری را حذف کرد",
+        metadata: {
+          deletedUserId: numericId,
+          deletedUsername: existingUser.username,
+        },
+      });
+    }
     // Revalidate paths so cached pages update
     revalidatePath("/dashboard/users");
     revalidatePath("/admin/users");
@@ -257,6 +295,7 @@ export async function deleteUser(id: number | string) {
  */
 export async function bulkDeleteUsers(ids: Array<number | string>) {
   try {
+    const session = await getServerSession(authOptions);
     if (!ids || ids.length === 0) {
       return { success: false, message: "هیچ کاربری برای حذف انتخاب نشده" };
     }
@@ -303,6 +342,16 @@ export async function bulkDeleteUsers(ids: Array<number | string>) {
       `Bulk deleted ${deleteResult.count} users:`,
       existingUsers.map((u) => u.username),
     );
+
+    if (session?.user) {
+      await logActivity({
+        type: "delete",
+        userId: Number(session.user.id),
+        userName: session.user.username,
+        action: `${deleteResult.count} کاربر را به صورت گروهی حذف کرد`,
+        metadata: { deletedUserIds: idsToDelete, count: deleteResult.count },
+      });
+    }
 
     revalidatePath("/dashboard/users");
     revalidatePath("/admin/users");

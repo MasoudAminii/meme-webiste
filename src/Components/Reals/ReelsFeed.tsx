@@ -61,26 +61,19 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
         const path = `${routePrefix}/${slug}`;
 
         try {
-          if (usePush) {
-            window.history.pushState(
-              { slug, scrollPos: window.scrollY },
-              "",
-              path,
-            );
-          } else {
-            window.history.replaceState(
-              { slug, scrollPos: window.scrollY },
-              "",
-              path,
-            );
-          }
+          // ALWAYS use replaceState to prevent navigation/refresh
+          window.history.replaceState(
+            { slug, scrollPos: window.scrollY },
+            "",
+            path,
+          );
           lastUrlRef.current = slug;
         } catch (err) {
           console.error("Failed to update URL:", err);
         } finally {
           isUpdatingRef.current = false;
         }
-      }, 150);
+      }, 150); // Increased delay to prevent rapid updates
     },
     [getRoutePrefix],
   );
@@ -207,6 +200,7 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
   // Popstate handling
   useEffect(() => {
     const onPop = (e: PopStateEvent) => {
+      e.preventDefault(); // Prevent browser navigation
       const state = e.state;
       if (!state?.slug) return;
 
@@ -290,7 +284,7 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
             key={p.id}
             data-index={i}
             data-slug={p.slug}
-            className="reel-item flex h-[100dvh] w-full flex-none snap-start items-center justify-center overflow-hidden lg:h-[calc(100vh-4rem)]"
+            className="reel-item flex h-[100dvh] w-full flex-none snap-start items-center justify-center overflow-hidden lg:h-[calc(100vh-4rem)] lg:overflow-visible"
             role="listitem"
           >
             <div className="relative h-full w-full lg:max-w-[600px]">

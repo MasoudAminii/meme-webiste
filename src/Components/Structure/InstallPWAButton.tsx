@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import Pwa from "../../../public/logo/pwa.png";
+import Pwa from "../../../public/logo/icons/pwa.svg";
 
 // Define the type for the BeforeInstallPromptEvent
 interface BeforeInstallPromptEvent extends Event {
@@ -42,7 +42,7 @@ export default function InstallPWAButton() {
 
   return (
     <>
-      <div className="pwa rounded-xl bg-[#D6EAF8] max-lg:hidden p-6 text-center">
+      <div className="pwa rounded-xl bg-[#D6EAF8] p-6 text-center max-lg:hidden">
         <h5 className="mb-2 text-[21px] font-semibold text-black">
           استفاده از در حالت PWA
         </h5>

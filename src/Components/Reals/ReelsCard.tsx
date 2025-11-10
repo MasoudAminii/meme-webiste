@@ -1,6 +1,8 @@
 "use client";
 
 import { incrementView, toggleLike } from "@/actions/postsActions";
+import { FaShare, FaVolumeHigh, FaVolumeXmark } from "react-icons/fa6";
+import { FaHeart, FaEye, FaPause, FaPlay, FaArrowLeft } from "react-icons/fa";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -139,6 +141,7 @@ export default function ReelsCard({
   const [muted, setMuted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasViewed, setHasViewed] = useState(false);
+  const [showPlayPauseIcon, setShowPlayPauseIcon] = useState(false);
 
   // Progress / seeking state
   const [progress, setProgress] = useState<number>(0); // 0..1
@@ -256,10 +259,17 @@ export default function ReelsCard({
       if (!isVideo) return;
       const v = videoRef.current;
       if (!v) return;
+
       if (!v.paused && !v.ended) {
+        // Video is playing, so pause it and show PAUSE icon
         v.pause();
+        setShowPlayPauseIcon(true);
+        setTimeout(() => setShowPlayPauseIcon(false), 1000);
       } else {
+        // Video is paused, so play it and show PLAY icon
         v.play().catch(() => {});
+        setShowPlayPauseIcon(true);
+        setTimeout(() => setShowPlayPauseIcon(false), 1000);
       }
     },
     [isVideo],
@@ -310,7 +320,7 @@ export default function ReelsCard({
   );
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-black text-white lg:rounded-3xl lg:shadow-2xl">
+    <div className="relative h-full w-full bg-black text-white lg:rounded-3xl lg:shadow-2xl">
       {/* MEDIA */}
       {isVideo ? (
         <video
@@ -325,9 +335,8 @@ export default function ReelsCard({
             e.stopPropagation();
             const now = Date.now();
             lastTouchTime.current = now;
-            // handleTap();
           }}
-          className="absolute inset-0 h-full w-full object-contain shadow-2xl lg:rounded-3xl"
+          className="absolute inset-0 h-full w-full overflow-hidden object-contain"
         />
       ) : (
         <div
@@ -336,9 +345,8 @@ export default function ReelsCard({
             e.stopPropagation();
             const now = Date.now();
             lastTouchTime.current = now;
-            // handleTap();
           }}
-          className="absolute inset-0 flex items-center justify-center"
+          className="absolute inset-0 flex items-center justify-center overflow-hidden"
         >
           <div className="relative h-full w-full">
             <Image
@@ -347,16 +355,34 @@ export default function ReelsCard({
               fill
               sizes="(min-width:1024px) 500px, 100vw"
               priority={isActive}
-              className="object-contain shadow-2xl lg:rounded-3xl"
+              className="object-contain"
             />
           </div>
         </div>
       )}
       {/* overlays */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-black/20" />
-      {/* Big Heart */}
+      {/* Play/Pause indicator - shows for 1 second */}
+      {isVideo && showPlayPauseIcon && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-white/30 bg-black/60 shadow-2xl backdrop-blur-md"
+          >
+            {!isPlaying ? (
+              <FaPause className="text-3xl text-white" />
+            ) : (
+              <FaPlay className="ml-1 text-3xl text-white" />
+            )}
+          </motion.div>
+        </div>
+      )}
 
-      {isVideo && !isPlaying && (
+      {/* Static pause button when video is paused */}
+      {isVideo && !isPlaying && !showPlayPauseIcon && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
           <button
             onClick={(e) => {
@@ -366,10 +392,11 @@ export default function ReelsCard({
             className="group pointer-events-auto relative flex h-20 w-20 cursor-pointer items-center justify-center rounded-full border-2 border-white/30 bg-black/60 shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-110 hover:border-white/50 hover:bg-black/80"
             aria-label="play"
           >
-            <PlayPauseIcon isPlaying={false} size={36} />
+            <FaPlay className="ml-1 text-3xl text-white" />
           </button>
         </div>
       )}
+
       {/* Top controls */}
       <div className="absolute top-6 right-4 left-4 z-20 flex flex-row-reverse items-center justify-between md:right-6 md:left-6 lg:justify-end">
         {/* Left side - Return button */}
@@ -379,15 +406,7 @@ export default function ReelsCard({
           aria-label="return to home"
         >
           <div className="absolute inset-0 rounded-full bg-white/10" />
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M19 12H5M5 12L12 19M5 12L12 5"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <FaArrowLeft className="text-xl text-white" />
         </Link>
 
         {/* Right side - Mute and views */}
@@ -407,42 +426,22 @@ export default function ReelsCard({
             aria-label="toggle mute"
           >
             <div className="absolute inset-0 rounded-full bg-white/10" />
-            <VolumeIcon muted={muted} size={22} />
+            {muted ? (
+              <FaVolumeXmark className="text-xl text-white/90" />
+            ) : (
+              <FaVolumeHigh className="text-xl text-white/90" />
+            )}
             <div className="absolute inset-0 rounded-full border-2 border-transparent" />
           </button>
 
           <div className="flex items-center gap-3 rounded-full border border-white/30 bg-black/50 px-4 py-2 text-sm font-semibold shadow-xl backdrop-blur-md">
-            <div className="relative">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                className="text-white"
-              >
-                <path
-                  d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="none"
-                />
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="3"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="rgba(255,255,255,0.06)"
-                />
-              </svg>
-            </div>
+            <FaEye className="text-lg text-white" />
             <span className="font-bold tracking-wide text-white">{views}</span>
           </div>
         </div>
       </div>
-      {/* Action column */}
-      <div className="absolute bottom-24 left-4 z-20 flex flex-col items-center gap-5 md:left-6 lg:left-6">
+      {/* Action column - Mobile: inside, Desktop: outside */}
+      <div className="absolute bottom-24 left-4 z-20 flex flex-col items-center gap-5 md:left-6 lg:hidden">
         <button
           onClick={handleToggleLike}
           className="group relative flex flex-col items-center gap-2"
@@ -457,7 +456,9 @@ export default function ReelsCard({
               animate={likeData.liked ? { scale: [1, 1.18, 1] } : { scale: 1 }}
               transition={{ duration: 0.45, ease: "easeOut" }}
             >
-              <HeartIcon size={32} filled={likeData.liked} />
+              <FaHeart
+                className={`text-3xl transition-colors duration-300 ${likeData.liked ? "text-red-500" : "text-white"}`}
+              />
             </motion.div>
           </div>
           <span className="text-sm font-bold tracking-wide drop-shadow-lg">
@@ -471,32 +472,7 @@ export default function ReelsCard({
         >
           <div className="relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-white/30 bg-black/40 shadow-2xl backdrop-blur-md transition-all duration-300 hover:border-cyan-400/60 hover:bg-black/60">
             <div className="absolute inset-0 rounded-full bg-white/10" />
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <polyline
-                points="16,6 12,2 8,6"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <line
-                x1="12"
-                y1="2"
-                x2="12"
-                y2="15"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <FaShare className="text-2xl text-white" />
             <div className="absolute inset-0 rounded-full border border-transparent" />
           </div>
           <span className="text-sm font-bold tracking-wide drop-shadow-lg">
@@ -512,9 +488,67 @@ export default function ReelsCard({
           )}
         </button>
       </div>
+      {/* Desktop action buttons - left bottom */}
+      <div className="absolute bottom-6 -left-20 z-20 hidden flex-col items-end gap-4 lg:flex">
+        <button
+          onClick={handleToggleLike}
+          className="group relative flex flex-col items-center gap-1.5"
+          aria-label="like"
+        >
+          <div
+            className={`relative flex h-14 w-14 items-center justify-center rounded-full border-2 shadow-xl backdrop-blur-md transition-all duration-500 ${likeData.liked ? "border-red-400/60 bg-red-600/20" : "border-white/30 bg-black/40 hover:scale-110 hover:border-white/50 hover:bg-black/60"}`}
+          >
+            <motion.div
+              key={`heart-pulse-desktop-${likeData.likes}`}
+              animate={likeData.liked ? { scale: [1, 1.18, 1] } : { scale: 1 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+            >
+              <FaHeart
+                className={`text-2xl transition-colors duration-300 ${likeData.liked ? "text-red-500" : "text-white"}`}
+              />
+            </motion.div>
+          </div>
+          <span className="text-xs font-semibold tracking-wide text-white/90 drop-shadow-lg">
+            {likeData.likes}
+          </span>
+        </button>
+
+        <button
+          onClick={handleShare}
+          className="group relative flex flex-col items-center gap-1.5"
+          aria-label="share"
+        >
+          <div className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/30 bg-black/40 shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-110 hover:border-cyan-400/60 hover:bg-black/60">
+            <FaShare className="text-xl text-white" />
+          </div>
+          <span className="text-xs font-semibold tracking-wide text-white/90 drop-shadow-lg">
+            Share
+          </span>
+          {copied && (
+            <div className="absolute -top-16 left-1/2 -translate-x-1/2 rounded-lg border border-green-400/50 bg-green-600 px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-white shadow-xl">
+              <div className="flex items-center gap-1.5">
+                <span>✓</span>Link Copied
+              </div>
+              <div className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 transform bg-green-600" />
+            </div>
+          )}
+        </button>
+      </div>
+
+      {/* Description section - right bottom (desktop only) */}
+      {caption && (
+        <div className="absolute right-6 bottom-6 z-20 hidden max-w-xs lg:block">
+          <div className="rounded-xl border border-white/10 bg-black/40 p-4 backdrop-blur-md">
+            <p className="line-clamp-3 text-sm leading-relaxed text-white/90">
+              {caption}
+            </p>
+          </div>
+        </div>
+      )}
+
       {isVideo && (
         <div
-          className="pointer-events-auto absolute right-4 bottom-4 left-4 z-30 md:right-6 md:left-6"
+          className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 px-2"
           dir="rtl"
         >
           <div className="flex items-center gap-4">

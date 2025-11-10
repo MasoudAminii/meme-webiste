@@ -35,14 +35,16 @@ const navLinks = [
 ];
 
 const Header = () => {
+
   return (
     <>
       {/* Desktop Nav */}
       <nav
-        className="sticky top-8 z-50 flex h-full max-w-[367px] min-w-[367px] flex-col justify-between gap-8 rounded-[20px] bg-[var(--gradient-2)] p-6 shadow-2xl max-lg:hidden"
+        className="sticky top-8 z-50 flex max-w-[367px] min-w-[367px] flex-col justify-between gap-8 rounded-[20px] bg-[var(--gradient-2)] p-6 shadow-2xl max-lg:hidden"
         style={{
+          height: "clamp(600px, calc(100vh - 4rem), 958px)",
           minHeight: "768px",
-          maxHeight: "1012px",
+          maxHeight: "958px",
           backgroundImage: "var(--gradient-2)",
         }}
       >
@@ -73,8 +75,8 @@ const Header = () => {
         </div>
 
         <div className="header-bottom flex-shrink-0 space-y-4">
-          <div className="darkmode-button bg-primary-40 flex items-center justify-between rounded-[20px] p-4 text-xl">
-            <span className="text-secondary font-medium">حالت تاریک</span>
+          <div className="darkmode-button bg-link-bg flex items-center justify-between rounded-[20px] p-4 text-xl">
+            <span className="font-medium">حالت تاریک</span>
             <ThemeChange />
           </div>
           <div>
@@ -103,7 +105,7 @@ const Header = () => {
             </div>
           </div>
         </div>
-        <div className="BottomNav from-primary-40 via-primary-40 fixed inset-x-0 bottom-0 z-50 w-full bg-gradient-to-t to-transparent px-2 lg:hidden">
+        <div className="BottomNav from-link-fade via-link-fade fixed inset-x-0 bottom-0 z-50 w-full bg-gradient-to-t to-transparent px-2 lg:hidden">
           <NavLinks links={navLinks} />
         </div>
       </nav>

@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import React, { useMemo, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 
 import {
   bulkDeleteUsers,
@@ -355,7 +356,11 @@ const CreateForm = React.memo(CreateFormInner);
  * UsersContainer (main component)
  */
 const UsersContainer = ({ data }: { data: UserItem[] }) => {
-  const [activeTab, setActiveTab] = useState<"preview" | "create">("preview");
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<"preview" | "create">(
+    tabParam === "create" ? "create" : "preview",
+  );
   const [users, setUsers] = useState<UserItem[]>(data || []);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<SortField>("createdAt");

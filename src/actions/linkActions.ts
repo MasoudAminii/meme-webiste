@@ -4,6 +4,9 @@ import prisma from "@/lib/db";
 import { uploadBannerImage, deleteBannerImage } from "@/lib/LinkUpload";
 import { revalidatePath } from "next/cache";
 import type { Link } from "@prisma/client";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/authOptions";
+import { logActivity } from "@/actions/activityActions";
 
 type ActionResult = {
   success?: true;
@@ -25,6 +28,7 @@ export async function createLink(
   formData: FormData,
 ): Promise<ActionResult> {
   try {
+    const session = await getServerSession(authOptions);
     // Normalize & trim values
     const slug = String(formData.get("slug") || "").trim();
     const username = String(formData.get("username") || "").trim();
@@ -105,10 +109,21 @@ export async function createLink(
         data: dataForWrite,
       });
 
+      // Log activity for UPDATE
+      if (session?.user) {
+        await logActivity({
+          type: "edit",
+          userId: Number(session.user.id),
+          userName: session.user.username,
+          action: "لینکی را ویرایش کرد",
+          metadata: { linkId: updated.id, slug },
+        });
+      }
+
       // Revalidate paths after successful update
       revalidatePath("/dashboard/links");
       revalidatePath("/");
-      revalidatePath(`/l/${slug}`); // If you have individual link pages
+      revalidatePath(`/l/${slug}`);
 
       return {
         success: true,
@@ -132,10 +147,21 @@ export async function createLink(
       },
     });
 
+    // Log activity for CREATE
+    if (session?.user) {
+      await logActivity({
+        type: "post",
+        userId: Number(session.user.id),
+        userName: session.user.username,
+        action: "لینک جدیدی ایجاد کرد",
+        metadata: { linkId: created.id, slug },
+      });
+    }
+
     // Revalidate paths after successful creation
     revalidatePath("/dashboard/links");
     revalidatePath("/");
-    revalidatePath(`/l/${slug}`); // If you have individual link pages
+    revalidatePath(`/l/${slug}`);
 
     return { success: true, message: "لینک با موفقیت ایجاد شد", link: created };
   } catch (error: unknown) {
@@ -157,6 +183,7 @@ export async function createLink(
 
 export async function deleteLink(linkId: number): Promise<ActionResult> {
   try {
+    const session = await getServerSession(authOptions);
     // First, get the link to check if it has an uploaded image
     const existingLink = await prisma.link.findUnique({
       where: { id: linkId },
@@ -183,6 +210,16 @@ export async function deleteLink(linkId: number): Promise<ActionResult> {
     await prisma.link.delete({
       where: { id: linkId },
     });
+
+    if (session?.user) {
+      await logActivity({
+        type: "delete",
+        userId: Number(session.user.id),
+        userName: session.user.username,
+        action: "لینکی را حذف کرد",
+        metadata: { linkId, slug: linkSlug },
+      });
+    }
 
     // Revalidate paths after successful deletion
     revalidatePath("/dashboard/links");

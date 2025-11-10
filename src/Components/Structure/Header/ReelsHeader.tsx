@@ -75,7 +75,7 @@ const ReelsHeader = () => {
         </div>
 
         <div className="header-bottom flex-shrink-0 space-y-4">
-          <div className="darkmode-button bg-primary-40 flex items-center justify-between rounded-[20px] p-4 text-xl">
+          <div className="darkmode-button bg-link-bg flex items-center justify-between rounded-[20px] p-4 text-xl">
             <span className="text-secondary font-medium">حالت تاریک</span>
             <ThemeChange />
           </div>

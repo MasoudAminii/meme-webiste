@@ -64,13 +64,28 @@ enum Role {
   WRITER
 }
 
-model User {
+model Activity {
   id        Int      @id @default(autoincrement())
-  username  String   @unique
-  password  String
-  role      Role     @default(WRITER)
+  type      String   // login, post, comment, like, share, edit, delete
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName  String   // Store name separately in case user is deleted
+  action    String   // Description of the action
+  metadata  Json?    // Additional data (post id, etc.)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  
+  @@index([createdAt])
+  @@index([type])
 }
 
+// Also update the User model to include the relation:
+model User {
+  id         Int        @id @default(autoincrement())
+  username   String     @unique
+  password   String
+  role       Role       @default(WRITER)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  activities Activity[] // Add this line
+}
 

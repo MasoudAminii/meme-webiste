@@ -1,10 +1,9 @@
- // NavLinks.tsx
+// NavLinks.tsx
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
-
 
 type NavLink = {
   href: string;
@@ -18,7 +17,6 @@ interface NavLinksProps {
 }
 
 // Persian navigation labels with updated icon sizes and optional `match` patterns
-
 
 function isPathActive(pathname: string | null, matches?: string[]) {
   if (!pathname) return false;
@@ -53,10 +51,10 @@ const NavLinks: React.FC<NavLinksProps> = ({ links }) => {
                 title={label}
                 href={href}
                 className={[
-                  "flex items-center gap-4 rounded-xl p-3 text-xl",
+                  "flex items-center gap-4 rounded-xl p-3 text-xl", // Changed from rounded-[20px]
                   !isActive
-                    ? "text-light-dark hover:text-accent hover:bg-primary-40"
-                    : "text-accent bg-primary-40",
+                    ? "text-light-dark hover:text-link-text hover:bg-link-bg"
+                    : "text-link-text bg-link-bg",
                 ]
                   .filter(Boolean)
                   .join(" ")}
@@ -69,7 +67,7 @@ const NavLinks: React.FC<NavLinksProps> = ({ links }) => {
         })}
       </ul>
 
-      <div className="mobile-nav-links z-50 mx-auto mb-4 max-w-lg rounded-full bg-white p-2 shadow-2xl sm:p-3 lg:hidden">
+      <div className="mobile-nav-links bg-link-fade/70 z-50 mx-auto mb-4 max-w-lg rounded-full border border-white/20 p-2 shadow-2xl backdrop-blur-xl sm:p-3 lg:hidden">
         <ul className="flex items-center justify-between sm:gap-4">
           {links.map(({ href, label, icon, match }) => {
             const isActive = isPathActive(pathname, match ?? [href]);
@@ -78,10 +76,10 @@ const NavLinks: React.FC<NavLinksProps> = ({ links }) => {
                 <Link
                   href={href}
                   className={[
-                    "flex items-center gap-2 rounded-full p-3",
+                    "flex items-center gap-2 rounded-full p-3 transition-all duration-200",
                     !isActive
-                      ? "text-light-dark hover:text-accent hover:bg-primary-40"
-                      : "text-accent bg-primary-40",
+                      ? "text-light-dark hover:text-accent hover:bg-white/50"
+                      : "text-link-text bg-link-bg",
                   ]
                     .filter(Boolean)
                     .join(" ")}
@@ -100,5 +98,5 @@ const NavLinks: React.FC<NavLinksProps> = ({ links }) => {
       </div>
     </>
   );
-}
-export default NavLinks
+};
+export default NavLinks;

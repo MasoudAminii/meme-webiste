@@ -17,7 +17,7 @@ export default function StatsCards({
     posts: 0,
     users: 0,
     views: 0,
-    uptime: 0,
+    uptime: 0, // Empty string instead of data.uptime
   });
 
   // bars state for sparkline
@@ -76,24 +76,33 @@ export default function StatsCards({
 
   // Animate numbers on mount
   useEffect(() => {
+    // Set uptime immediately without animation
+    setAnimatedValues((prev) => ({
+      ...prev,
+      uptime: data.uptime,
+    }));
+
     const animateNumber = (key, target) => {
-      const isPercentage = typeof target === "string" && target.includes("%");
-      const numericTarget = isPercentage ? parseFloat(target) : target;
+      // Skip animation for non-numeric values
+      if (typeof target !== "number") {
+        return;
+      }
+
       const duration = 2000;
       const steps = 60;
-      const stepValue = numericTarget / steps;
+      const stepValue = target / steps;
 
       let current = 0;
       const timer = setInterval(() => {
         current += stepValue;
-        if (current >= numericTarget) {
-          current = numericTarget;
+        if (current >= target) {
+          current = target;
           clearInterval(timer);
         }
 
         setAnimatedValues((prev) => ({
           ...prev,
-          [key]: isPercentage ? `${current.toFixed(1)}%` : Math.floor(current),
+          [key]: Math.floor(current),
         }));
       }, duration / steps);
     };
@@ -101,7 +110,6 @@ export default function StatsCards({
     setTimeout(() => animateNumber("posts", data.posts), 100);
     setTimeout(() => animateNumber("users", data.users), 200);
     setTimeout(() => animateNumber("views", data.views), 300);
-    setTimeout(() => animateNumber("uptime", data.uptime), 400);
   }, [data]);
 
   // Generate sparkline bar heights only on client

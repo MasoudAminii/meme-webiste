@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 import ThemeChange from "@/Components/Structure/Header/ThemeChange";
 import {
@@ -22,6 +22,9 @@ export default function AdminHeader({ username = null }) {
   const pathname = usePathname() || "";
   const router = useRouter();
 
+  const { data: session } = useSession();
+  const userRole = session?.user?.role;
+
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -32,6 +35,7 @@ export default function AdminHeader({ username = null }) {
       labelEn: "Dashboard",
       icon: AiOutlineHome,
       href: "/dashboard",
+      allowedRoles: ["ADMIN", "WRITER"], // Both can access
     },
     {
       id: "about",
@@ -39,6 +43,7 @@ export default function AdminHeader({ username = null }) {
       labelEn: "About",
       icon: AiOutlineSetting,
       href: "/dashboard/about",
+      allowedRoles: ["ADMIN"], // Only admin
     },
     {
       id: "link",
@@ -46,6 +51,7 @@ export default function AdminHeader({ username = null }) {
       labelEn: "Links",
       icon: AiOutlineShareAlt,
       href: "/dashboard/links",
+      allowedRoles: ["ADMIN"], // Only admin
     },
     {
       id: "posts",
@@ -53,6 +59,7 @@ export default function AdminHeader({ username = null }) {
       labelEn: "Posts",
       icon: AiOutlineBarChart,
       href: "/dashboard/posts",
+      allowedRoles: ["ADMIN", "WRITER"], // Both can access
     },
     {
       id: "users",
@@ -60,9 +67,14 @@ export default function AdminHeader({ username = null }) {
       labelEn: "Users",
       icon: AiOutlineUser,
       href: "/dashboard/users",
+      allowedRoles: ["ADMIN"], // Only admin
     },
   ];
 
+  // Filter nav items based on user role
+  const filteredNavItems = navItems.filter((item) =>
+    item.allowedRoles.includes(userRole),
+  );
   const isHrefActive = (href) => pathname === href;
 
   // Safely compute initial (handle non-string username)
@@ -127,7 +139,7 @@ export default function AdminHeader({ username = null }) {
           </div>
 
           <nav className="flex-1 space-y-2">
-            {navItems.map((item, index) => {
+            {filteredNavItems.map((item, index) => {
               const Icon = item.icon;
               const active = isHrefActive(item.href);
               return (
@@ -180,7 +192,7 @@ export default function AdminHeader({ username = null }) {
             </button>
           </div>
 
-          <div className="from-primary-40 to-bg-gradient-2 flex items-center justify-between rounded-2xl bg-gradient-to-r p-4 transition-all duration-200 hover:shadow-lg">
+          <div className="bg-primary-40 flex items-center justify-between rounded-2xl p-4 shadow-lg">
             <div className="flex flex-col">
               <span className="text-secondary font-semibold">حالت تاریک</span>
               <span className="text-light-dark text-xs">Dark Mode</span>
@@ -191,7 +203,7 @@ export default function AdminHeader({ username = null }) {
           {/* User Profile — clicking opens the confirm popup */}
           <div
             onClick={openConfirm}
-            className="hover:bg-primary-40 flex cursor-pointer items-center gap-3 rounded-xl p-3 transition-colors"
+            className="border-accent/20 flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors"
             aria-label="پروفایل کاربر"
           >
             <div className="from-accent text-primary flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br to-purple-500 font-semibold">
@@ -224,65 +236,114 @@ export default function AdminHeader({ username = null }) {
       {/* Confirmation Modal */}
       {showConfirm && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="confirm-signout"
           onClick={closeConfirm}
         >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          {/* Enhanced backdrop with animation */}
+          <div className="animate-in fade-in absolute inset-0 bg-black/60 backdrop-blur-md duration-200" />
 
+          {/* Modal card */}
           <div
-            className="relative z-10 w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl dark:bg-gray-800"
+            className="animate-in zoom-in-95 slide-in-from-bottom-4 relative z-10 w-full max-w-md duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3
-              id="confirm-signout"
-              className="text-lg font-semibold text-gray-900 dark:text-gray-100"
-            >
-              خروج از حساب
-            </h3>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              آیا مطمئن هستید که می‌خواهید خارج شوید؟ برای دسترسی دوباره به
-              داشبورد باید دوباره وارد شوید.
-            </p>
-
-            <div className="mt-6 flex  gap-3">
-              <button
-                onClick={closeConfirm}
-                className="rounded-md border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700"
-              >
-                انصراف
-              </button>
-
-              <button
-                onClick={confirmSignOut}
-                disabled={loading}
-                className="inline-flex items-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
-              >
-                {loading ? (
+            <div className="bg-bg-1 border-light-white overflow-hidden rounded-2xl border shadow-2xl">
+              {/* Header with icon */}
+              <div className="border-light-white border-b p-6 pb-4">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
                   <svg
-                    className="mr-2 h-4 w-4 animate-spin"
+                    className="h-8 w-8 text-red-600 dark:text-red-500"
+                    fill="none"
                     viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
                     <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 118 8h-4l3 3-3 3h4a8 8 0 01-8 8v-4l-3 3 3 3v-4a8 8 0 01-8-8z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                     />
                   </svg>
-                ) : null}
-                خروج
-              </button>
+                </div>
+                <h3
+                  id="confirm-signout"
+                  className="text-secondary text-center text-xl font-bold"
+                >
+                  خروج از حساب کاربری
+                </h3>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                <p className="text-light-dark text-center leading-relaxed">
+                  آیا مطمئن هستید که می‌خواهید از حساب کاربری خود خارج شوید؟
+                  <br />
+                  <span className="mt-2 block text-sm">
+                    برای دسترسی مجدد باید دوباره وارد شوید.
+                  </span>
+                </p>
+
+                {/* Buttons */}
+                <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
+                  <button
+                    onClick={closeConfirm}
+                    className="hover:bg-primary-40 border-light-white text-secondary flex-1 cursor-pointer rounded-xl border px-5 py-3 text-sm font-medium transition-all duration-200"
+                  >
+                    انصراف
+                  </button>
+
+                  <button
+                    onClick={confirmSignOut}
+                    disabled={loading}
+                    className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-red-500/30 transition-all duration-200 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 disabled:hover:bg-red-600"
+                  >
+                    {loading ? (
+                      <>
+                        <svg
+                          className="h-5 w-5 animate-spin"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                        در حال خروج...
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                          />
+                        </svg>
+                        خروج از حساب
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -292,7 +353,7 @@ export default function AdminHeader({ username = null }) {
         <div className="BottomNav from-primary-40 via-primary-40 fixed inset-x-0 bottom-0 z-50 w-full bg-gradient-to-t to-transparent px-2 lg:hidden">
           <div className="mobile-nav-links z-50 mx-auto mb-4 max-w-lg rounded-full bg-white p-2 shadow-2xl sm:p-3 lg:hidden">
             <ul className="flex items-center justify-between sm:gap-4">
-              {navItems.map(({ href, label, icon }) => {
+              {filteredNavItems.map(({ href, label, icon }) => {
                 const isActive = isHrefActive(href);
                 const Icon = icon;
                 return (

@@ -3,6 +3,9 @@
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { uploadBannerImage, deleteBannerImage } from "@/lib/upload";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/authOptions";
+import { logActivity } from "@/actions/activityActions";
 
 // Define the return type to match what useActionState expects
 type ActionState = {
@@ -16,6 +19,7 @@ export async function UpdateAboutInfo(
   formData: FormData,
 ): Promise<ActionState> {
   try {
+    const session = await getServerSession(authOptions);
     const bannerField = formData.get("banner");
     let bannerUrl: string | null = null;
 
@@ -144,6 +148,16 @@ export async function UpdateAboutInfo(
         ...(financialSupportUrl ? { financialSupportUrl } : {}),
       },
     });
+
+    if (session?.user) {
+      await logActivity({
+        type: "edit",
+        userId: Number(session.user.id),
+        userName: session.user.username,
+        action: "اطلاعات درباره ما را ویرایش کرد",
+        metadata: { section: "about-us" },
+      });
+    }
 
     console.log("Database updated successfully");
 

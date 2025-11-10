@@ -10,6 +10,11 @@
   --gradient-2: linear-gradient(90deg, #ffffff 0%, #ffffff 100%);
   --gradient-3: linear-gradient(90deg, #29209d 0%, #635ad9 100%);
   --bg-1: #ffffff;
+  --bg-2: #f5f7fa;
+  --link-fade: #f5f7fa;
+  --link-bg: #eef2ff;
+  --link-text: #4f46e5;
+  --footer-bg: #ffffff;
   --skeleton: #e5e7eb;
   --skeleton-fg: #d1d5db;
 
@@ -32,9 +37,13 @@
   --accent: #d4a8ff;
   --light-dark: #d7d7d7;
   --light-white: rgb(255 255 255 / 15%);
-  --gradient-2: linear-gradient(180deg, #475569c8 0%, #3341559a 100%);
+  --gradient-2: linear-gradient(0deg, #24292e 100%);
   --gradient-3: linear-gradient(90deg, #29209d 0%, #635ad9 100%);
   --bg-1: #1e2939;
+  --bg-2: linear-gradient(180deg, #24292e -70%, #09090a 100%);
+  --link-fade: #09090a;
+  --link-bg: #7e7e7e;
+  --link-text: #ffffff;
   --skeleton: #364153;
   --skeleton-fg: #2f3944;
 }
@@ -49,6 +58,11 @@
   --color-gradient-2: var(--gradient-2);
   --color-gradient-3: var(--gradient-3);
   --color-bg-1: var(--bg-1);
+  --color-bg-2: var(--bg-2);
+  --color-link-fade: var(--link-fade);
+  --color-link-bg: var(--link-bg);
+  --color-link-text: var(--link-text);
+  --color-footer-bg: var(--footer-bg);
   --color-skeleton: var(--skeleton);
   --color-skeleton-fg: var(--skeleton-fg);
 }
@@ -69,7 +83,7 @@
 } */
 
 body {
-  background: var(--primary-40);
+  background: var(--bg-2);
   font-family: var(--font-primary);
   font-size: var(--step-0);
   font-family: var(--font-estedad), var(--font-inter), sans-serif;

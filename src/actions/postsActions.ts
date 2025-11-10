@@ -8,6 +8,38 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/authOptions";
+
+// Helper function to log activity
+async function logActivity({
+  type,
+  userId,
+  userName,
+  action,
+  metadata = null,
+}: {
+  type: string;
+  userId?: number;
+  userName: string;
+  action: string;
+  metadata?: any;
+}) {
+  try {
+    await prisma.activity.create({
+      data: {
+        type,
+        userId,
+        userName,
+        action,
+        metadata,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to log activity:", error);
+    // Don't throw - activity logging shouldn't break the main operation
+  }
+}
 
 export async function incrementView(postId: number) {
   try {
@@ -27,7 +59,7 @@ export async function incrementView(postId: number) {
       maxAge: 60 * 60 * 24,
       httpOnly: true,
       sameSite: "strict",
-      path: "/", // Important: set path
+      path: "/",
     });
 
     return { success: true, alreadyViewed: false };
@@ -43,7 +75,6 @@ export async function toggleLike(postId: number) {
     const cookieName = `liked_${postId}`;
     const isCurrentlyLiked = cookieStore.get(cookieName)?.value === "true";
 
-    // Update database
     const updatedPost = await prisma.mediaItem.update({
       where: { id: postId },
       data: {
@@ -54,7 +85,6 @@ export async function toggleLike(postId: number) {
       select: { likes: true },
     });
 
-    // FIX: Don't delete cookie, just set to "false" to prevent navigation
     (await cookies()).set(cookieName, isCurrentlyLiked ? "false" : "true", {
       maxAge: 60 * 60 * 24 * 365,
       httpOnly: true,
@@ -133,6 +163,9 @@ export async function createPost(
   formData: FormData,
 ): Promise<CreatePostResult> {
   try {
+    // Get session for activity logging
+    const session = await getServerSession(authOptions);
+
     const slug = (formData.get("slug") as string | null)?.trim() ?? "";
     const description =
       (formData.get("description") as string | null)?.trim() ?? null;
@@ -210,7 +243,17 @@ export async function createPost(
 
     console.log("Created post:", post);
 
-    // OK to revalidate here since user is in dashboard
+    // Log activity
+    if (session?.user) {
+      await logActivity({
+        type: "post",
+        userId: Number(session.user.id),
+        userName: session.user.username,
+        action: "پست جدیدی منتشر کرد",
+        metadata: { postId: post.id, slug: post.slug },
+      });
+    }
+
     revalidatePath("/dashboard/posts");
     revalidatePath("/gallery");
     revalidatePath("/reels");
@@ -249,6 +292,9 @@ export async function updatePost(
   formData: FormData,
 ): Promise<UpdatePostResult> {
   try {
+    // Get session for activity logging
+    const session = await getServerSession(authOptions);
+
     const slug = (formData.get("slug") as string | null)?.trim() ?? "";
     const description =
       (formData.get("description") as string | null)?.trim() ?? null;
@@ -337,6 +383,17 @@ export async function updatePost(
       data: updateData,
     });
 
+    // Log activity
+    if (session?.user) {
+      await logActivity({
+        type: "edit",
+        userId: Number(session.user.id),
+        userName: session.user.username,
+        action: "پستی را ویرایش کرد",
+        metadata: { postId: updated.id, slug: updated.slug },
+      });
+    }
+
     revalidatePath("/dashboard/posts");
     revalidatePath("/gallery");
     revalidatePath("/reels");
@@ -363,6 +420,9 @@ export async function deletePost(
   id: number | string,
 ): Promise<{ success: boolean; message: string }> {
   try {
+    // Get session for activity logging
+    const session = await getServerSession(authOptions);
+
     const numericId = Number(id);
     if (Number.isNaN(numericId)) {
       return { success: false, message: "آیدی نامعتبر است" };
@@ -392,6 +452,17 @@ export async function deletePost(
       where: { id: numericId },
     });
 
+    // Log activity
+    if (session?.user) {
+      await logActivity({
+        type: "delete",
+        userId: Number(session.user.id),
+        userName: session.user.username,
+        action: "پستی را حذف کرد",
+        metadata: { postId: numericId, slug: existingPost.slug },
+      });
+    }
+
     revalidatePath("/dashboard/posts");
     revalidatePath("/gallery");
     revalidatePath("/reels");
@@ -411,6 +482,9 @@ export async function bulkDeletePosts(
   ids: Array<number | string>,
 ): Promise<{ success: boolean; message: string }> {
   try {
+    // Get session for activity logging
+    const session = await getServerSession(authOptions);
+
     if (!ids || ids.length === 0) {
       return { success: false, message: "هیچ پستی برای حذف انتخاب نشده" };
     }
@@ -441,6 +515,17 @@ export async function bulkDeletePosts(
     const deleteResult = await prisma.mediaItem.deleteMany({
       where: { id: { in: idsToDelete } },
     });
+
+    // Log activity
+    if (session?.user) {
+      await logActivity({
+        type: "delete",
+        userId: Number(session.user.id),
+        userName: session.user.username,
+        action: `${deleteResult.count} پست را به صورت گروهی حذف کرد`,
+        metadata: { postIds: idsToDelete, count: deleteResult.count },
+      });
+    }
 
     revalidatePath("/dashboard/posts");
     revalidatePath("/gallery");
