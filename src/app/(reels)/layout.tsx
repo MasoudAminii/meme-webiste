@@ -6,7 +6,7 @@ export default function ReelsLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative mx-auto flex min-h-screen max-w-screen-2xl flex-col lg:flex-row lg:gap-8 lg:p-8">
+    <div className="relative mx-auto flex min-h-screen max-w-screen-2xl flex-col lg:flex-row lg:gap-8 lg:px-8">
       {/* Header Sidebar */}
       <aside className="w-full md:w-auto md:flex-shrink-0">
         <ReelsHeader />

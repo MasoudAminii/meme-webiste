@@ -1,9 +1,11 @@
 // ReelsFeed.tsx - Fixed version with no refresh issues
 "use client";
 
-import React, { useRef, useEffect, useCallback, useState } from "react";
-import ReelsCard from "./ReelsCard";
+import { toggleLike } from "@/actions/postsActions";
 import type { StaticImageData } from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { FaHeart, FaShare } from "react-icons/fa";
+import ReelsCard from "./ReelsCard";
 
 type Post = {
   id: number;
@@ -15,7 +17,10 @@ type Post = {
   initialViews?: number;
   initialLiked?: boolean;
   caption?: string;
-  author?: string;
+  // allow null because DB may return null
+  author?: string | null;
+  // accept Date or ISO string (defensive)
+  createdAt?: Date | string | null;
 };
 
 type Props = {
@@ -43,10 +48,76 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
   const lastUrlRef = useRef<string>("");
   const hasInitializedRef = useRef(false);
 
+  const [postsLikeData, setPostsLikeData] = useState(() =>
+    posts.reduce(
+      (acc, post) => {
+        acc[post.id] = {
+          liked: post.initialLiked || false,
+          likes: post.initialLikes || 0,
+        };
+        return acc;
+      },
+      {} as Record<number, { liked: boolean; likes: number }>,
+    ),
+  );
+
+  const likeThrottleRef = useRef<Record<number, boolean>>({});
+
+  const handleToggleLike = useCallback((postId: number) => {
+    if (likeThrottleRef.current[postId]) return;
+
+    likeThrottleRef.current[postId] = true;
+    setTimeout(() => {
+      likeThrottleRef.current[postId] = false;
+    }, 600);
+
+    // Optimistic update
+    setPostsLikeData((prev) => ({
+      ...prev,
+      [postId]: {
+        liked: !prev[postId].liked,
+        likes: prev[postId].likes + (prev[postId].liked ? -1 : 1),
+      },
+    }));
+
+    // Call server in background
+    toggleLike(postId).then((result) => {
+      if (result.success) {
+        setPostsLikeData((prev) => ({
+          ...prev,
+          [postId]: {
+            liked: result.liked,
+            likes: result.likes,
+          },
+        }));
+      }
+    });
+  }, []);
+
+  const formatTimeAgo = (date?: Date | string | null) => {
+    if (!date) return "همین الان";
+    const d = new Date(date);
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    const months = Math.floor(days / 30);
+    const years = Math.floor(days / 365);
+
+    if (years > 0) return `${years} سال پیش`;
+    if (months > 0) return `${months} ماه پیش`;
+    if (days > 0) return `${days} روز پیش`;
+    if (hours > 0) return `${hours} ساعت پیش`;
+    if (minutes > 0) return `${minutes} دقیقه پیش`;
+    return "همین الان";
+  };
+
   const getRoutePrefix = useCallback(() => "/reels", []);
 
   const updateUrl = useCallback(
-    (slug: string, usePush = true) => {
+    (slug: string) => {
       // Prevent duplicate URL updates
       if (lastUrlRef.current === slug || isUpdatingRef.current) return;
 
@@ -61,7 +132,7 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
         const path = `${routePrefix}/${slug}`;
 
         try {
-          // ALWAYS use replaceState to prevent navigation/refresh
+          // ALWAYS use replaceState - NEVER use pushState
           window.history.replaceState(
             { slug, scrollPos: window.scrollY },
             "",
@@ -73,7 +144,7 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
         } finally {
           isUpdatingRef.current = false;
         }
-      }, 150); // Increased delay to prevent rapid updates
+      }, 200); // Increased delay to 200ms
     },
     [getRoutePrefix],
   );
@@ -155,7 +226,7 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
                 setCurrentIndex(idx);
                 currentIndexRef.current = idx;
                 const slug = posts[idx]?.slug;
-                if (slug) updateUrl(slug, true);
+                if (slug) updateUrl(slug);
               }, 100);
             }
           }
@@ -272,10 +343,32 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
   return (
     <div
       ref={containerRef}
-      className="no-scrollbar -webkit-overflow-scrolling-touch mx-auto flex h-[100dvh] w-full snap-y snap-mandatory flex-col overflow-y-auto lg:h-[calc(100vh-4rem)] lg:gap-6"
+      className="no-scrollbar -webkit-overflow-scrolling-touch mx-auto flex h-[100dvh] w-full snap-y snap-mandatory flex-col justify-center overflow-y-auto lg:h-[calc(100vh)] lg:gap-6"
+      style={{ overscrollBehavior: "contain" }}
       role="list"
     >
       {posts.map((p, i) => {
+        const handleShare = async () => {
+          const shareUrl =
+            typeof window !== "undefined" ? window.location.href : "";
+          if (navigator.share) {
+            try {
+              await navigator.share({
+                title: p.caption || "Share",
+                url: shareUrl,
+              });
+            } catch (error) {
+              console.log("Share failed:", error);
+            }
+          } else {
+            try {
+              await navigator.clipboard.writeText(shareUrl);
+            } catch (error) {
+              console.log("Copy failed:", error);
+            }
+          }
+        };
+
         const resolvedSrc =
           typeof p.src === "string" ? p.src : (p.src as StaticImageData).src;
 
@@ -284,10 +377,95 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
             key={p.id}
             data-index={i}
             data-slug={p.slug}
-            className="reel-item flex h-[100dvh] w-full flex-none snap-start items-center justify-center overflow-hidden lg:h-[calc(100vh-4rem)] lg:overflow-visible"
+            className="reel-item relative flex h-[100dvh] w-full flex-none snap-start items-end overflow-hidden lg:mb-8 lg:h-[calc(100vh-2.5rem)] lg:overflow-visible lg:py-6 lg:pb-1"
             role="listitem"
           >
-            <div className="relative h-full w-full lg:max-w-[600px]">
+            {(p.caption || p.author) && (
+              <div className="z-10 max-w-xs min-w-xs max-lg:hidden">
+                <div className="group relative overflow-hidden rounded-3xl p-6">
+                  {/* Shimmer effect on hover */}
+
+                  {/* Author section */}
+                  <div className="relative mb-4 flex items-center gap-3.5">
+                    {/* Avatar with animated gradient ring */}
+                    <div className="relative">
+                      <div className="animate-spin-slow absolute -inset-1 rounded-full bg-[#4f46e5] opacity-75 blur-md" />
+                      <div className="ring-light-white relative flex h-12 w-12 items-center justify-center rounded-full bg-[#4f46e5] ring-2">
+                        <span className="text-primary text-lg font-bold tracking-tight drop-shadow-lg">
+                          {p.author ? p.author.charAt(0).toUpperCase() : "U"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Author name with enhanced styling */}
+                    <div className="flex flex-col">
+                      <span className="text-secondary text-base font-bold tracking-tight lg:text-lg">
+                        {p.author || "Anonymous User"}
+                      </span>
+                      <span className="text-light-dark text-xs font-medium">
+                        {p.createdAt ? formatTimeAgo(p.createdAt) : "همین الان"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-light-dark relative mb-5 line-clamp-3 text-[15px] leading-relaxed font-normal tracking-wide lg:text-base lg:leading-relaxed">
+                    {p.caption}
+                  </p>
+
+                  {/* Desktop action buttons with enhanced design */}
+                  <div className="hidden items-center gap-3 lg:flex">
+                    <button
+                      onClick={() => handleToggleLike(p.id)}
+                      className="group/btn relative flex items-center gap-3 overflow-hidden rounded-full px-5 py-3 transition-all duration-300"
+                      aria-label="like"
+                    >
+                      <div
+                        className={`absolute inset-0 transition-all duration-500 ${
+                          postsLikeData[p.id]?.liked
+                            ? "bg-gradient-to-r from-rose-600/30 to-pink-600/30"
+                            : "group-hover/btn:bg-primary-40"
+                        }`}
+                      />
+                      <div
+                        className={`absolute inset-0 rounded-full border-2 transition-colors duration-300 ${
+                          postsLikeData[p.id]?.liked
+                            ? "border-rose-400/50"
+                            : "border-light-dark/20 group-hover/btn:border-light-dark/40"
+                        }`}
+                      />
+
+                      <FaHeart
+                        className={`relative text-xl transition-all duration-300 ${
+                          postsLikeData[p.id]?.liked
+                            ? "text-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]"
+                            : "text-light-dark group-hover/btn:text-secondary group-hover/btn:scale-110"
+                        }`}
+                      />
+
+                      <span className="text-light-dark group-hover/btn:text-secondary relative text-sm font-bold tracking-wide drop-shadow-lg">
+                        {postsLikeData[p.id]?.likes || 0}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={handleShare}
+                      className="group/btn relative flex items-center gap-3 overflow-hidden rounded-full px-5 py-3 transition-all duration-300"
+                      aria-label="share"
+                    >
+                      <div className="group-hover/btn:bg-accent/20 absolute inset-0 transition-all duration-300" />
+                      <div className="border-light-dark/20 group-hover/btn:border-accent/50 absolute inset-0 rounded-full border-2 transition-colors duration-300" />
+
+                      <FaShare className="text-light-dark group-hover/btn:text-accent relative text-lg transition-all duration-300 group-hover/btn:scale-110" />
+                      <span className="text-light-dark group-hover/btn:text-accent relative text-sm font-bold tracking-wide drop-shadow-lg">
+                        Share
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="relative h-full w-full bg-black sm:min-w-[400px] lg:max-w-[600px] lg:rounded-3xl">
               <ReelsCard
                 postId={p.id}
                 src={resolvedSrc}
@@ -300,6 +478,8 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
                 isActive={i === currentIndex}
               />
             </div>
+
+            {/* Desktop action buttons */}
           </div>
         );
       })}

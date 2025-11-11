@@ -84,7 +84,8 @@ export default async function ReelSlugPage({
     initialViews: r.views,
     initialLiked: likeStates.get(r.id) ?? false,
     caption: r.description ?? "",
-    author: r.author ?? "@uploader",
+    author: r.author ?? "Anonymous",
+    createdAt: r.createdAt, // ← Add this line
   }));
 
   // Find the index of the requested slug

@@ -15,10 +15,12 @@
   --link-bg: #eef2ff;
   --link-text: #4f46e5;
   --footer-bg: #ffffff;
-  --skeleton: #e5e7eb;
-  --skeleton-fg: #d1d5db;
-
+  --skeleton: #e2e8f0;
+  --skeleton-fg: #cbd5e1;
+  --skeleton-highlight: #f1f5f9;
   --font-primary: var(--font-estedad), var(--font-inter), sans-serif;
+  --pwa-bg: #d6eaf8;
+  --pwa-button-bg: #3f51b5;
 
   --step--1: 0.75rem; /* 12px */
   --step-0: 1rem; /* 16px */
@@ -44,8 +46,11 @@
   --link-fade: #09090a;
   --link-bg: #7e7e7e;
   --link-text: #ffffff;
-  --skeleton: #364153;
-  --skeleton-fg: #2f3944;
+  --skeleton: #2d3748;
+  --skeleton-fg: #1e293b;
+  --skeleton-highlight: #3d4b5f;
+  --pwa-bg: #7e7e7e;
+  --pwa-button-bg: #87D9FF;
 }
 
 @theme inline {
@@ -65,6 +70,9 @@
   --color-footer-bg: var(--footer-bg);
   --color-skeleton: var(--skeleton);
   --color-skeleton-fg: var(--skeleton-fg);
+  --color-skeleton-highlight: var(--skeleton-highlight);
+  --color-pwa-bg: var(--pwa-bg);
+  --color-pwa-button-bg: var(--pwa-button-bg);
 }
 
 /* @media (prefers-color-scheme: dark) {

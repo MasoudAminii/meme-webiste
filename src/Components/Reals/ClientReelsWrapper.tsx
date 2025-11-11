@@ -14,7 +14,9 @@ type Post = {
   initialViews: number;
   initialLiked?: boolean; // ADD THIS
   caption: string;
-  author: string;
+  author?: string | null;
+  // accept Date or ISO string (defensive)
+  createdAt?: Date | string | null;
 };
 
 type Props = {

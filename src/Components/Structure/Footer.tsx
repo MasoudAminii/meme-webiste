@@ -1,6 +1,4 @@
 export default function Footer() {
-`  console.log('🟢 FOOTER RENDERING:', new Date().toISOString());
-`
   return (
     <div className="hidden w-full lg:block">
       {/* right→left two-colour fade */}

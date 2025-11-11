@@ -42,11 +42,11 @@ export default function InstallPWAButton() {
 
   return (
     <>
-      <div className="pwa rounded-xl bg-[#D6EAF8] p-6 text-center max-lg:hidden">
-        <h5 className="mb-2 text-[21px] font-semibold text-black">
+      <div className="pwa bg-pwa-bg rounded-xl p-6 text-center max-lg:hidden">
+        <h5 className="mb-2 text-[21px] font-semibold">
           استفاده از در حالت PWA
         </h5>
-        <p className="py-3 leading-relaxed font-semibold text-black">
+        <p className="py-3 leading-relaxed font-semibold">
           برای استفاده بهتر و دسترسی راحت‌تر از حالت اپلیکیشن استفاده کنید.
         </p>
         <button

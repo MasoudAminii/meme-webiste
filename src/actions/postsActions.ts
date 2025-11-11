@@ -10,6 +10,7 @@ import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
+import { Prisma } from "@prisma/client";
 
 // Helper function to log activity
 async function logActivity({
@@ -17,13 +18,13 @@ async function logActivity({
   userId,
   userName,
   action,
-  metadata = null,
+  metadata,
 }: {
   type: string;
   userId?: number;
   userName: string;
   action: string;
-  metadata?: any;
+  metadata?: Prisma.InputJsonValue;
 }) {
   try {
     await prisma.activity.create({
@@ -32,7 +33,7 @@ async function logActivity({
         userId,
         userName,
         action,
-        metadata,
+        ...(metadata !== undefined && metadata !== null && { metadata }),
       },
     });
   } catch (error) {

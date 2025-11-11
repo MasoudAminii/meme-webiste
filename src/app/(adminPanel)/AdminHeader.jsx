@@ -193,10 +193,6 @@ export default function AdminHeader({ username = null }) {
           </div>
 
           <div className="bg-primary-40 flex items-center justify-between rounded-2xl p-4 shadow-lg">
-            <div className="flex flex-col">
-              <span className="text-secondary font-semibold">حالت تاریک</span>
-              <span className="text-light-dark text-xs">Dark Mode</span>
-            </div>
             <ThemeChange />
           </div>
 

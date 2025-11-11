@@ -62,7 +62,7 @@ async function LinksGrid({ groups }: { groups: Groups }) {
         >
           {group.map((link) => {
             const base =
-              "Link-Item flex  gap-6 max-[375px]:items-center lg:items-center lg:flex-row max-[375px]:flex-row flex-col justify-between rounded-3xl p-4 sm:p-6 lg:p-8 lg:py-10";
+              "Link-Item flex  max-[375px]:items-center lg:items-center lg:flex-row max-[375px]:flex-row flex-col justify-between rounded-3xl p-4 sm:p-6 lg:p-8 lg:py-10";
 
             const dbBg = (link?.backgroundCss || "").trim();
             const useTailwindBg = isTailwindBgClass(dbBg);
@@ -91,7 +91,7 @@ async function LinksGrid({ groups }: { groups: Groups }) {
                   boxShadow: "rgba(99, 99, 99, 0.2) 0px 2px 8px 0px",
                 }}
               >
-                <div className="image-icon h-16 w-16 flex-shrink-0 md:h-20 md:w-20">
+                <div className="image-icon h-13 w-13 flex-shrink-0 sm:h-16 sm:w-16 md:h-20 md:w-20">
                   <Image
                     src={logoPath}
                     alt={link.label || "Link Icon"}
@@ -102,7 +102,7 @@ async function LinksGrid({ groups }: { groups: Groups }) {
                   />
                 </div>
 
-                <div className="flex flex-col gap-2 text-right">
+                <div className="flex flex-col sm:gap-2 text-right">
                   <span
                     className="truncate text-lg leading-tight font-semibold text-white sm:text-2xl"
                     style={textStyle}

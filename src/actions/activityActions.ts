@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 
 // Helper function to format time ago in Persian
 function formatTimeAgo(date: Date): string {
@@ -25,7 +26,9 @@ function formatTimeAgo(date: Date): string {
 // Simple avatar generator based on name
 function getAvatarForUser(name: string): string {
   const avatars = ["👤", "👨", "👩", "🧑", "👨‍💼", "👩‍💼"];
-  const hash = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hash = name
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return avatars[hash % avatars.length];
 }
 
@@ -37,7 +40,7 @@ interface Activity {
   time: string;
   timestamp: string;
   avatar: string;
-  metadata: any;
+  metadata: Prisma.JsonValue | null;
 }
 
 interface GetActivitiesResult {
@@ -48,7 +51,7 @@ interface GetActivitiesResult {
 // Get activities with optional filter
 export async function getActivities(
   filter: string = "all",
-  limit: number = 20
+  limit: number = 20,
 ): Promise<GetActivitiesResult> {
   try {
     const session = await getServerSession(authOptions);
@@ -99,7 +102,7 @@ interface LogActivityParams {
   userId?: number;
   userName: string;
   action: string;
-  metadata?: any;
+  metadata?: Prisma.InputJsonValue;
 }
 
 // Log an activity (internal use)
@@ -108,7 +111,7 @@ export async function logActivity({
   userId,
   userName,
   action,
-  metadata = null,
+  metadata,
 }: LogActivityParams): Promise<{ success: boolean; error?: string }> {
   try {
     await prisma.activity.create({
@@ -117,13 +120,13 @@ export async function logActivity({
         userId,
         userName,
         action,
-        metadata,
+        ...(metadata !== undefined && { metadata }),
       },
     });
 
     // Revalidate the dashboard to show new activity
     revalidatePath("/admin/dashboard");
-    
+
     return { success: true };
   } catch (error) {
     console.error("Failed to log activity:", error);

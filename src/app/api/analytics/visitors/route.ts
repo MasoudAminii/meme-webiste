@@ -36,7 +36,8 @@ export async function GET() {
         const data = await response.json();
         const totalVisitors =
           data.data?.reduce(
-            (sum: number, entry: any) => sum + (entry.visitors || 0),
+            (sum: number, entry: { visitors?: number }) =>
+              sum + (entry.visitors || 0),
             0,
           ) || 0;
         return NextResponse.json({ visitorsToday: totalVisitors });

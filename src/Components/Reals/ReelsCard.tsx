@@ -8,93 +8,6 @@ import Image from "next/image";
 import Link from "next/link";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-interface HeartIconProps {
-  size?: number;
-  filled?: boolean;
-}
-const HeartIcon = ({ size = 28, filled = false }: HeartIconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
-    <path
-      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-      fill={filled ? "currentColor" : "none"}
-      stroke={filled ? "none" : "currentColor"}
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-interface VolumeIconProps {
-  muted?: boolean;
-  size?: number;
-}
-const VolumeIcon = ({ muted = false, size = 20 }: VolumeIconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
-    <polygon
-      points="11,5 6,9 2,9 2,15 6,15 11,19"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      fill="currentColor"
-      opacity={muted ? "0.5" : "1"}
-    />
-    {!muted && (
-      <>
-        <path
-          d="m19.07 4.93-1.41 1.41A6 6 0 0 1 19 12a6 6 0 0 1-1.34 5.66l1.41 1.41A8 8 0 0 0 21 12a8 8 0 0 0-1.93-7.07z"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-        <path
-          d="M15.54 8.46a4 4 0 0 1 0 7.07"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-      </>
-    )}
-    {muted && (
-      <line
-        x1="23"
-        y1="9"
-        x2="17"
-        y2="15"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    )}
-  </svg>
-);
-
-interface PlayPauseIconProps {
-  isPlaying?: boolean;
-  size?: number;
-}
-const PlayPauseIcon = ({
-  isPlaying = false,
-  size = 24,
-}: PlayPauseIconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
-    {isPlaying ? (
-      <>
-        <rect x="6" y="4" width="4" height="16" rx="2" fill="currentColor" />
-        <rect x="14" y="4" width="4" height="16" rx="2" fill="currentColor" />
-      </>
-    ) : (
-      <polygon points="5,3 19,12 5,21" fill="currentColor" />
-    )}
-  </svg>
-);
-
 /* ----------------------- Types ----------------------- */
 type ReelsCardProps = {
   postId: number;
@@ -103,18 +16,23 @@ type ReelsCardProps = {
   poster?: string | null;
   initialLikes?: number;
   initialViews?: number;
-  initialLiked?: boolean; // ADD THIS
+  initialLiked?: boolean;
   caption?: string;
   isActive?: boolean;
-};
-/* ----------------------- Helper: format seconds to mm:ss ----------------------- */
-const formatTime = (s: number) => {
-  if (!isFinite(s) || s <= 0) return "0:00";
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60);
-  return `${m}:${sec.toString().padStart(2, "0")}`;
+  author?: string; // ADD THIS
+  createdAt?: Date; // ADD THIS
 };
 
+/* ----------------------- Helper: format seconds to mm:ss ----------------------- */
+const formatTimeAgo = (date: Date) => {
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000);
+
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
+};
 /* ----------------------- ReelsCard (with scrubber) ----------------------- */
 export default function ReelsCard({
   postId,
@@ -126,6 +44,8 @@ export default function ReelsCard({
   initialLiked = false,
   caption = "",
   isActive = false,
+  author, // ADD THIS
+  createdAt, // ADD THIS
 }: ReelsCardProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -277,8 +197,6 @@ export default function ReelsCard({
 
   const handleClickMedia = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const now = Date.now();
-    if (now - lastTouchTime.current < 600) return; // ignore ghost clicks
     togglePlayPause();
   };
 
@@ -319,9 +237,47 @@ export default function ReelsCard({
     [duration, isVideo],
   );
 
+  // near top of your component
+  const progressColor = "#4f46e5";
+
   return (
-    <div className="relative h-full w-full bg-black text-white lg:rounded-3xl lg:shadow-2xl">
+    <div className="relative h-full w-full bg-black text-white lg:rounded-3xl">
       {/* MEDIA */}
+
+      {isVideo ? (
+        <video
+          ref={(el) => {
+            if (el && videoRef.current) {
+              // Sync background video with main video
+              const syncPlayback = () => {
+                if (!videoRef.current || !el) return;
+                if (videoRef.current.paused) {
+                  el.pause();
+                } else {
+                  el.play().catch(() => {});
+                }
+                el.currentTime = videoRef.current.currentTime;
+              };
+
+              videoRef.current.addEventListener("play", syncPlayback);
+              videoRef.current.addEventListener("pause", syncPlayback);
+              videoRef.current.addEventListener("seeked", syncPlayback);
+            }
+          }}
+          src={src}
+          poster={poster ?? undefined}
+          loop
+          playsInline
+          muted
+          className="absolute inset-0 h-full w-full object-contain opacity-60 blur-[80px] brightness-75"
+          style={{ pointerEvents: "none" }}
+        />
+      ) : (
+        <div className="absolute inset-0 scale-[1.15] opacity-60 blur-[80px] brightness-75">
+          <Image src={src} alt="" fill sizes="100vw" className="object-cover" />
+        </div>
+      )}
+
       {isVideo ? (
         <video
           ref={videoRef}
@@ -333,10 +289,9 @@ export default function ReelsCard({
           onClick={handleClickMedia}
           onTouchEnd={(e) => {
             e.stopPropagation();
-            const now = Date.now();
-            lastTouchTime.current = now;
+            togglePlayPause(e);
           }}
-          className="absolute inset-0 h-full w-full overflow-hidden object-contain"
+          className="absolute inset-0 z-10 h-full w-full overflow-hidden object-contain"
         />
       ) : (
         <div
@@ -361,7 +316,6 @@ export default function ReelsCard({
         </div>
       )}
       {/* overlays */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-black/20" />
       {/* Play/Pause indicator - shows for 1 second */}
       {isVideo && showPlayPauseIcon && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
@@ -370,7 +324,7 @@ export default function ReelsCard({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-white/30 bg-black/60 shadow-2xl backdrop-blur-md"
+            className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-white/30 bg-black/60 backdrop-blur-md"
           >
             {!isPlaying ? (
               <FaPause className="text-3xl text-white" />
@@ -406,7 +360,7 @@ export default function ReelsCard({
           aria-label="return to home"
         >
           <div className="absolute inset-0 rounded-full bg-white/10" />
-          <FaArrowLeft className="text-xl text-white" />
+          <FaArrowLeft className="text-base text-white md:text-xl" />
         </Link>
 
         {/* Right side - Mute and views */}
@@ -427,295 +381,248 @@ export default function ReelsCard({
           >
             <div className="absolute inset-0 rounded-full bg-white/10" />
             {muted ? (
-              <FaVolumeXmark className="text-xl text-white/90" />
+              <FaVolumeXmark className="text-base text-white/90 md:text-xl" />
             ) : (
-              <FaVolumeHigh className="text-xl text-white/90" />
+              <FaVolumeHigh className="text-base text-white/90 md:text-xl" />
             )}
             <div className="absolute inset-0 rounded-full border-2 border-transparent" />
           </button>
 
           <div className="flex items-center gap-3 rounded-full border border-white/30 bg-black/50 px-4 py-2 text-sm font-semibold shadow-xl backdrop-blur-md">
-            <FaEye className="text-lg text-white" />
+            <FaEye className="text-base text-white md:text-lg" />
             <span className="font-bold tracking-wide text-white">{views}</span>
           </div>
         </div>
       </div>
       {/* Action column - Mobile: inside, Desktop: outside */}
-      <div className="absolute bottom-24 left-4 z-20 flex flex-col items-center gap-5 md:left-6 lg:hidden">
+      <div className="absolute bottom-10 left-4 z-20 flex flex-col items-center gap-6 lg:hidden">
+        {/* Like Button */}
         <button
           onClick={handleToggleLike}
-          className="group relative flex flex-col items-center gap-2"
+          className="group relative flex flex-col items-center gap-1"
           aria-label="like"
         >
-          <div
-            className={`relative flex h-16 w-16 items-center justify-center rounded-full border-2 shadow-2xl backdrop-blur-md transition-all duration-500 ${likeData.liked ? "border-red-400/60 bg-red-600/20" : "border-white/30 bg-black/40 hover:border-white/50 hover:bg-black/60"}`}
+          <motion.div
+            animate={likeData.liked ? { scale: [1, 1.3, 1] } : { scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="flex h-11 w-11 items-center justify-center"
           >
-            <div className="absolute inset-0 rounded-full bg-white/10" />
-            <motion.div
-              key={`heart-pulse-${likeData.likes}`}
-              animate={likeData.liked ? { scale: [1, 1.18, 1] } : { scale: 1 }}
-              transition={{ duration: 0.45, ease: "easeOut" }}
-            >
-              <FaHeart
-                className={`text-3xl transition-colors duration-300 ${likeData.liked ? "text-red-500" : "text-white"}`}
-              />
-            </motion.div>
-          </div>
-          <span className="text-sm font-bold tracking-wide drop-shadow-lg">
-            {likeData.likes}
-          </span>
-        </button>
-        <button
-          onClick={handleShare}
-          className="group relative flex flex-col items-center gap-2"
-          aria-label="share"
-        >
-          <div className="relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-white/30 bg-black/40 shadow-2xl backdrop-blur-md transition-all duration-300 hover:border-cyan-400/60 hover:bg-black/60">
-            <div className="absolute inset-0 rounded-full bg-white/10" />
-            <FaShare className="text-2xl text-white" />
-            <div className="absolute inset-0 rounded-full border border-transparent" />
-          </div>
-          <span className="text-sm font-bold tracking-wide drop-shadow-lg">
-            Share
-          </span>
-          {copied && (
-            <div className="absolute -top-20 rounded-xl border border-green-400/50 bg-green-600 px-4 py-2 text-xs font-bold text-white shadow-2xl">
-              <div className="flex items-center gap-2">
-                <span>✓</span>Link Copied!
-              </div>
-              <div className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 transform bg-green-600" />
-            </div>
-          )}
-        </button>
-      </div>
-      {/* Desktop action buttons - left bottom */}
-      <div className="absolute bottom-6 -left-20 z-20 hidden flex-col items-end gap-4 lg:flex">
-        <button
-          onClick={handleToggleLike}
-          className="group relative flex flex-col items-center gap-1.5"
-          aria-label="like"
-        >
-          <div
-            className={`relative flex h-14 w-14 items-center justify-center rounded-full border-2 shadow-xl backdrop-blur-md transition-all duration-500 ${likeData.liked ? "border-red-400/60 bg-red-600/20" : "border-white/30 bg-black/40 hover:scale-110 hover:border-white/50 hover:bg-black/60"}`}
-          >
-            <motion.div
-              key={`heart-pulse-desktop-${likeData.likes}`}
-              animate={likeData.liked ? { scale: [1, 1.18, 1] } : { scale: 1 }}
-              transition={{ duration: 0.45, ease: "easeOut" }}
-            >
-              <FaHeart
-                className={`text-2xl transition-colors duration-300 ${likeData.liked ? "text-red-500" : "text-white"}`}
-              />
-            </motion.div>
-          </div>
-          <span className="text-xs font-semibold tracking-wide text-white/90 drop-shadow-lg">
+            <FaHeart
+              className={`text-3xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] transition-colors duration-200 ${
+                likeData.liked ? "text-red-500" : "text-white"
+              }`}
+            />
+          </motion.div>
+          <span className="text-xs font-semibold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
             {likeData.likes}
           </span>
         </button>
 
+        {/* Share Button */}
         <button
           onClick={handleShare}
-          className="group relative flex flex-col items-center gap-1.5"
+          className="group relative flex flex-col items-center gap-1"
           aria-label="share"
         >
-          <div className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/30 bg-black/40 shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-110 hover:border-cyan-400/60 hover:bg-black/60">
-            <FaShare className="text-xl text-white" />
+          <div className="flex h-11 w-11 items-center justify-center">
+            <FaShare className="text-3xl text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
           </div>
-          <span className="text-xs font-semibold tracking-wide text-white/90 drop-shadow-lg">
+          <span className="text-xs font-semibold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
             Share
           </span>
+
           {copied && (
-            <div className="absolute -top-16 left-1/2 -translate-x-1/2 rounded-lg border border-green-400/50 bg-green-600 px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-white shadow-xl">
-              <div className="flex items-center gap-1.5">
-                <span>✓</span>Link Copied
-              </div>
-              <div className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 transform bg-green-600" />
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="absolute top-0 -left-24 rounded-lg bg-white px-3 py-2 text-xs font-medium whitespace-nowrap text-gray-800 shadow-lg"
+            >
+              Link copied
+              <div className="absolute top-1/2 right-[-6px] h-3 w-3 -translate-y-1/2 rotate-45 bg-white" />
+            </motion.div>
           )}
         </button>
       </div>
 
-      {/* Description section - right bottom (desktop only) */}
-      {caption && (
-        <div className="absolute right-6 bottom-6 z-20 hidden max-w-xs lg:block">
-          <div className="rounded-xl border border-white/10 bg-black/40 p-4 backdrop-blur-md">
-            <p className="line-clamp-3 text-sm leading-relaxed text-white/90">
-              {caption}
-            </p>
+      {/* Caption section */}
+      <div className="absolute right-4 bottom-10 left-4 z-20 lg:hidden">
+        <div className="relative mb-3 flex items-center gap-2.5">
+          {/* Avatar with animated gradient ring - smaller */}
+          <div className="relative">
+            <div className="animate-spin-slow absolute -inset-0.5 rounded-full bg-[#4f46e5] opacity-75 blur-sm" />
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[#4f46e5] ring-2 ring-white/20">
+              <span className="text-sm font-bold tracking-tight text-white drop-shadow-lg">
+                {author ? author.charAt(0).toUpperCase() : "U"}
+              </span>
+            </div>
+          </div>
+          {/* Author name with enhanced styling - smaller */}
+          <div className="flex flex-col">
+            <span className="text-sm font-bold tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+              {author || "Anonymous User"}
+            </span>
+            <span className="text-[10px] font-medium text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+              {createdAt ? formatTimeAgo(createdAt) : "just now"}
+            </span>
           </div>
         </div>
-      )}
+        <p className="relative line-clamp-3 text-sm leading-relaxed font-normal tracking-wide text-white/90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+          {caption || "No caption provided"}
+        </p>
+      </div>
+
+      {/* Desktop action buttons - left bottom */}
 
       {isVideo && (
         <div
-          className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 px-2"
+          className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 lg:inset-x-5"
           dir="rtl"
         >
-          <div className="flex items-center gap-4">
-            {/* Total duration (now on the right in RTL) */}
-            <div className="min-w-[44px] text-xs font-semibold tracking-wide text-white tabular-nums drop-shadow-lg">
-              {formatTime(duration)}
-            </div>
+          {/* Enhanced progress bar container */}
+          <div
+            className="group relative cursor-pointer py-3"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setSeeking(true);
 
-            {/* Enhanced progress bar container */}
-            <div
-              className="group relative flex-1 cursor-pointer py-3"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                setSeeking(true);
+              const element = e.currentTarget;
+              if (!element) return;
 
-                const element = e.currentTarget;
+              const rect = element.getBoundingClientRect();
+              const x = rect.right - e.clientX;
+              const newProgress = Math.max(0, Math.min(1, x / rect.width));
+              setProgress(newProgress);
+              applySeek(newProgress);
+
+              const handlePointerMove = (moveEvent: PointerEvent) => {
                 if (!element) return;
-
                 const rect = element.getBoundingClientRect();
-                const x = rect.right - e.clientX;
+                const x = rect.right - moveEvent.clientX;
                 const newProgress = Math.max(0, Math.min(1, x / rect.width));
                 setProgress(newProgress);
                 applySeek(newProgress);
+              };
 
-                const handlePointerMove = (moveEvent: PointerEvent) => {
-                  if (!element) return;
-                  const rect = element.getBoundingClientRect();
-                  const x = rect.right - moveEvent.clientX;
-                  const newProgress = Math.max(0, Math.min(1, x / rect.width));
-                  setProgress(newProgress);
-                  applySeek(newProgress);
-                };
+              const handlePointerUp = () => {
+                setSeeking(false);
+                document.removeEventListener("pointermove", handlePointerMove);
+                document.removeEventListener("pointerup", handlePointerUp);
+              };
 
-                const handlePointerUp = () => {
-                  setSeeking(false);
-                  document.removeEventListener(
-                    "pointermove",
-                    handlePointerMove,
-                  );
-                  document.removeEventListener("pointerup", handlePointerUp);
-                };
+              document.addEventListener("pointermove", handlePointerMove);
+              document.addEventListener("pointerup", handlePointerUp);
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setSeeking(true);
 
-                document.addEventListener("pointermove", handlePointerMove);
-                document.addEventListener("pointerup", handlePointerUp);
-              }}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                setSeeking(true);
+              const element = e.currentTarget;
+              if (!element) return;
 
-                const element = e.currentTarget;
+              const rect = element.getBoundingClientRect();
+              const touch = e.touches[0];
+              if (!touch) return;
+
+              const x = rect.right - touch.clientX;
+              const newProgress = Math.max(0, Math.min(1, x / rect.width));
+              setProgress(newProgress);
+              applySeek(newProgress);
+
+              const handleTouchMove = (moveEvent: TouchEvent) => {
+                moveEvent.preventDefault();
                 if (!element) return;
 
                 const rect = element.getBoundingClientRect();
-                const touch = e.touches[0];
+                const touch = moveEvent.touches[0];
                 if (!touch) return;
 
                 const x = rect.right - touch.clientX;
                 const newProgress = Math.max(0, Math.min(1, x / rect.width));
                 setProgress(newProgress);
                 applySeek(newProgress);
+              };
 
-                const handleTouchMove = (moveEvent: TouchEvent) => {
-                  moveEvent.preventDefault();
-                  if (!element) return;
+              const handleTouchEnd = () => {
+                setSeeking(false);
+                document.removeEventListener("touchmove", handleTouchMove);
+                document.removeEventListener("touchend", handleTouchEnd);
+              };
 
-                  const rect = element.getBoundingClientRect();
-                  const touch = moveEvent.touches[0];
-                  if (!touch) return;
+              document.addEventListener("touchmove", handleTouchMove, {
+                passive: false,
+              });
+              document.addEventListener("touchend", handleTouchEnd);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (seeking) return;
 
-                  const x = rect.right - touch.clientX;
-                  const newProgress = Math.max(0, Math.min(1, x / rect.width));
-                  setProgress(newProgress);
-                  applySeek(newProgress);
-                };
+              const element = e.currentTarget;
+              if (!element) return;
 
-                const handleTouchEnd = () => {
-                  setSeeking(false);
-                  document.removeEventListener("touchmove", handleTouchMove);
-                  document.removeEventListener("touchend", handleTouchEnd);
-                };
+              const rect = element.getBoundingClientRect();
+              const x = rect.right - e.clientX;
+              const newProgress = Math.max(0, Math.min(1, x / rect.width));
+              setProgress(newProgress);
+              applySeek(newProgress);
+            }}
+            role="slider"
+            aria-label="Video progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress * 100)}
+          >
+            {/* Background track */}
+            <div className="absolute right-0 bottom-0 h-[2px] w-full rounded-full bg-white/20 transition-all duration-200 ease-out group-hover:h-[4px] group-hover:bg-white/25" />
 
-                document.addEventListener("touchmove", handleTouchMove, {
-                  passive: false,
-                });
-                document.addEventListener("touchend", handleTouchEnd);
+            {/* Buffer track */}
+            <div
+              className="absolute right-0 bottom-0 h-[2px] rounded-full bg-white/30 transition-all duration-300 ease-out group-hover:h-[4px]"
+              style={{
+                width: `${Math.min(100, Math.max(0, Math.round(progress * 100) + 15))}%`,
+                transition: "width 0.5s ease-out, height 0.2s ease-out",
               }}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (seeking) return; // Don't handle click if we were dragging
+            />
 
-                const element = e.currentTarget;
-                if (!element) return;
-
-                const rect = element.getBoundingClientRect();
-                const x = rect.right - e.clientX;
-                const newProgress = Math.max(0, Math.min(1, x / rect.width));
-                setProgress(newProgress);
-                applySeek(newProgress);
+            {/* Main progress track */}
+            <div
+              className="absolute right-0 bottom-0 rounded-full transition-all duration-75 ease-out group-hover:h-[4px]"
+              style={{
+                height: seeking ? "4px" : "3px",
+                width: `${Math.max(0, Math.min(100, Math.round(progress * 100)))}%`,
+                background: progressColor,
+                filter: "brightness(1.1)",
               }}
-              role="slider"
-              aria-label="Video progress"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(progress * 100)}
-            >
-              {/* Background track */}
-              <div className="absolute top-1/2 right-0 h-[2px] w-full -translate-y-1/2 rounded-full bg-white/20 transition-all duration-200 ease-out group-hover:h-[4px] group-hover:bg-white/25" />
+            />
 
-              {/* Buffer track (shows loaded content) - RTL */}
-              <div
-                className="absolute top-1/2 right-0 h-[2px] -translate-y-1/2 rounded-full bg-white/30 transition-all duration-300 ease-out group-hover:h-[4px]"
-                style={{
-                  width: `${Math.min(100, Math.max(0, Math.round(progress * 100) + 15))}%`,
-                  transition: "width 0.5s ease-out, height 0.2s ease-out",
-                }}
-              />
+            {/* Glow effect */}
+            <div
+              className="absolute right-0 bottom-0 h-[3px] rounded-full opacity-40 blur-[1px] transition-all duration-75 ease-out group-hover:h-[4px] group-hover:opacity-60"
+              style={{
+                width: `${Math.max(0, Math.min(100, Math.round(progress * 100)))}%`,
+                background: progressColor,
+                opacity: 0.4,
+              }}
+            />
 
-              {/* Main progress track - RTL */}
-              <div
-                className="absolute top-1/2 right-0 -translate-y-1/2 rounded-full bg-white transition-all duration-75 ease-out group-hover:h-[4px]"
-                style={{
-                  height: seeking ? "4px" : "3px",
-                  width: `${Math.max(0, Math.min(100, Math.round(progress * 100)))}%`,
-                  boxShadow: "0 0 6px rgba(255,255,255,0.4)",
-                  filter: "brightness(1.1)",
-                }}
-              />
-
-              {/* Glow effect - RTL */}
-              <div
-                className="absolute top-1/2 right-0 h-[3px] -translate-y-1/2 rounded-full bg-white opacity-40 blur-[1px] transition-all duration-75 ease-out group-hover:h-[4px] group-hover:opacity-60"
-                style={{
-                  width: `${Math.max(0, Math.min(100, Math.round(progress * 100)))}%`,
-                }}
-              />
-
-              {/* Animated thumb - RTL positioning */}
-              <div
-                className={`absolute top-1/2 rounded-full border-2 border-white/10 bg-white shadow-lg transition-all duration-150 ease-out ${
-                  seeking
-                    ? "scale-110 opacity-100"
-                    : "scale-100 opacity-0 group-hover:opacity-100"
-                }`}
-                style={{
-                  right: `${Math.max(0, Math.min(100, Math.round(progress * 100)))}%`,
-                  transform: `translate(50%, -50%) ${seeking ? "scale(1.1)" : "scale(1)"}`,
-                  width: seeking ? "16px" : "14px",
-                  height: seeking ? "16px" : "14px",
-                  boxShadow: seeking
-                    ? "0 0 0 4px rgba(255,255,255,0.2), 0 2px 8px rgba(0,0,0,0.3)"
-                    : "0 0 0 2px rgba(255,255,255,0.1), 0 2px 6px rgba(0,0,0,0.2)",
-                  backdropFilter: "blur(4px)",
-                  background:
-                    "linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%)",
-                }}
-              />
-
-              {/* Keyboard focus indicator */}
-              <div className="absolute inset-0 rounded-full opacity-0 ring-2 ring-white/50 ring-offset-2 ring-offset-transparent transition-opacity duration-200 focus-within:opacity-100" />
-            </div>
-
-            {/* Elapsed time (now on the left in RTL) */}
-            <div className="min-w-[44px] text-xs font-semibold tracking-wide text-white tabular-nums drop-shadow-lg">
-              {formatTime((duration || 0) * progress)}
-            </div>
+            {/* Animated thumb (circle) */}
+            <div
+              className={`absolute -bottom-1 rounded-full transition-all duration-150 ease-out ${
+                seeking
+                  ? "scale-110 opacity-100"
+                  : "scale-100 opacity-0 group-hover:opacity-100"
+              }`}
+              style={{
+                right: `${Math.max(0, Math.min(100, Math.round(progress * 100)))}%`,
+                transform: `translate(50%, 0%) ${seeking ? "scale(1.1)" : "scale(1)"}`,
+                width: seeking ? "16px" : "14px",
+                height: seeking ? "16px" : "14px",
+                background: "#4f46e5", // ✅ solid main color
+              }}
+            />
           </div>
         </div>
       )}

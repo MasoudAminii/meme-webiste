@@ -69,9 +69,9 @@ export default async function Reels() {
     initialViews: r.views,
     initialLiked: likeStates.get(r.id) ?? false,
     caption: r.description ?? "",
-    author: r.author ?? "@uploader",
+    author: r.author ?? "Anonymous",
+    createdAt: r.createdAt, // ← Fix this
   }));
-
   // Random start for main page
   const startIndex = Math.floor(Math.random() * allPosts.length);
   const reorderedPosts = [
