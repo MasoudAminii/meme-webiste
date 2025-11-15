@@ -791,7 +791,7 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
               </div>
 
               {/* Filters */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center flex-wrap gap-3">
                 <Filter className="text-light-dark h-4 w-4" />
                 <select
                   value={filter}
@@ -806,20 +806,22 @@ const PostsContainer = ({ data }: { data: MediaItem[] }) => {
                   </option>
                 </select>
 
-                <button
-                  onClick={() => window.location.reload()}
-                  className="text-light-dark rounded-lg p-2 transition-colors hover:bg-gray-100 hover:text-gray-800"
-                  title="بارگذاری مجدد"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </button>
+                <div className="flex gap-3 items-center">
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="text-light-dark rounded-lg p-2 transition-colors hover:bg-gray-100 hover:text-gray-800"
+                    title="بارگذاری مجدد"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </button>
 
-                <button
-                  className="text-light-dark rounded-lg p-2 transition-colors hover:bg-gray-100 hover:text-gray-800"
-                  title="خروجی"
-                >
-                  <Download className="h-4 w-4" />
-                </button>
+                  <button
+                    className="text-light-dark rounded-lg p-2 transition-colors hover:bg-gray-100 hover:text-gray-800"
+                    title="خروجی"
+                  >
+                    <Download className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </div>
 

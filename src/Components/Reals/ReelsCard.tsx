@@ -1,6 +1,10 @@
 "use client";
 
-import { incrementView, toggleLike } from "@/actions/postsActions";
+import {
+  incrementLike,
+  decrementLike,
+  incrementView,
+} from "@/actions/postsActions";
 import { FaShare, FaVolumeHigh, FaVolumeXmark } from "react-icons/fa6";
 import { FaHeart, FaEye, FaPause, FaPlay, FaArrowLeft } from "react-icons/fa";
 import { motion } from "framer-motion";
@@ -9,6 +13,7 @@ import Link from "next/link";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 /* ----------------------- Types ----------------------- */
+// In ReelsCard.tsx, update the ReelsCardProps type (around line 15-28):
 type ReelsCardProps = {
   postId: number;
   src: string;
@@ -19,14 +24,16 @@ type ReelsCardProps = {
   initialLiked?: boolean;
   caption?: string;
   isActive?: boolean;
-  author?: string; // ADD THIS
-  createdAt?: Date; // ADD THIS
+  author?: string | null; // CHANGE THIS LINE - was: string
+  createdAt?: Date | string | null;
 };
-
 /* ----------------------- Helper: format seconds to mm:ss ----------------------- */
-const formatTimeAgo = (date: Date) => {
+const formatTimeAgo = (date?: Date | string | null) => {
+  if (!date) return "just now";
+
+  const d = typeof date === "string" ? new Date(date) : date;
   const now = new Date();
-  const seconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000);
+  const seconds = Math.floor((now.getTime() - d.getTime()) / 1000);
 
   if (seconds < 60) return "just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
@@ -44,23 +51,38 @@ export default function ReelsCard({
   initialLiked = false,
   caption = "",
   isActive = false,
-  author, // ADD THIS
-  createdAt, // ADD THIS
+  author,
+  createdAt,
 }: ReelsCardProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Single state that tracks both actual and optimistic values
   // Simple state - no useOptimistic
-  const [likeData, setLikeData] = useState({
-    liked: initialLiked,
-    likes: initialLikes,
+  const [likeData, setLikeData] = useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(`liked_${postId}`);
+      return {
+        liked: stored === "true",
+        likes: initialLikes,
+      };
+    }
+    return {
+      liked: initialLiked,
+      likes: initialLikes,
+    };
   });
 
   const [views, setViews] = useState<number>(initialViews);
+  const [hasViewed, setHasViewed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(`viewed_${postId}`) === "true";
+    }
+    return false;
+  });
+
   const [copied, setCopied] = useState(false);
   const [muted, setMuted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [hasViewed, setHasViewed] = useState(false);
   const [showPlayPauseIcon, setShowPlayPauseIcon] = useState(false);
 
   // Progress / seeking state
@@ -75,10 +97,11 @@ export default function ReelsCard({
   useEffect(() => {
     if (isActive && !hasViewed) {
       setHasViewed(true);
+      localStorage.setItem(`viewed_${postId}`, "true");
 
       // Call server action to increment view
       incrementView(postId).then((result) => {
-        if (result.success && !result.alreadyViewed) {
+        if (result.success) {
           setViews((prev) => prev + 1);
         }
       });
@@ -86,20 +109,7 @@ export default function ReelsCard({
   }, [isActive, hasViewed, postId]);
 
   // sync playing/paused state
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
-    v.addEventListener("play", onPlay);
-    v.addEventListener("pause", onPause);
-    return () => {
-      v.removeEventListener("play", onPlay);
-      v.removeEventListener("pause", onPause);
-    };
-  }, []);
-
-  // when the parent says this is active, start playing
+  // Find the useEffect that handles video play/pause (around line 130) and update it:
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !isVideo) return;
@@ -107,11 +117,14 @@ export default function ReelsCard({
     v.muted = muted;
 
     if (isActive) {
+      // Reset video to start when becoming active
+      v.currentTime = 0;
       v.play()
         .then(() => setIsPlaying(true))
         .catch(() => {});
     } else {
       v.pause();
+      v.currentTime = 0; // ADD THIS - reset when not active
       setIsPlaying(false);
     }
   }, [isActive, isVideo, muted]);
@@ -150,23 +163,38 @@ export default function ReelsCard({
     likeThrottleRef.current = true;
     setTimeout(() => (likeThrottleRef.current = false), 600);
 
+    const wasLiked = likeData.liked;
+
     // Optimistic update - instant UI feedback
     setLikeData((prev) => ({
       liked: !prev.liked,
       likes: prev.likes + (prev.liked ? -1 : 1),
     }));
 
+    // Save to localStorage
+    localStorage.setItem(`liked_${postId}`, (!wasLiked).toString());
+
     // Call server in background
-    toggleLike(postId).then((result) => {
-      if (result.success) {
-        // Update with actual server values
-        setLikeData({
-          liked: result.liked,
-          likes: result.likes,
-        });
-      }
-    });
-  }, [postId]);
+    if (wasLiked) {
+      decrementLike(postId).then((result) => {
+        if (result.success) {
+          setLikeData((prev) => ({
+            ...prev,
+            likes: result.likes,
+          }));
+        }
+      });
+    } else {
+      incrementLike(postId).then((result) => {
+        if (result.success) {
+          setLikeData((prev) => ({
+            ...prev,
+            likes: result.likes,
+          }));
+        }
+      });
+    }
+  }, [postId, likeData.liked]);
 
   const togglePlayPause = useCallback(
     (e?: React.SyntheticEvent) => {

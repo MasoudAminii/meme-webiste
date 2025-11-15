@@ -1,16 +1,15 @@
 "use server";
 
+import { authOptions } from "@/lib/authOptions";
 import prisma from "@/lib/db";
 import type { MediaItem } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { existsSync } from "fs";
 import { mkdir, unlink, writeFile } from "fs/promises";
+import { getServerSession } from "next-auth/next";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/authOptions";
-import { Prisma } from "@prisma/client";
 
 // Helper function to log activity
 async function logActivity({
@@ -42,61 +41,24 @@ async function logActivity({
   }
 }
 
-export async function incrementView(postId: number) {
-  try {
-    const cookieStore = await cookies();
-    const viewedPosts = cookieStore.get(`viewed_${postId}`);
-
-    if (viewedPosts) {
-      return { success: true, alreadyViewed: true };
-    }
-
-    await prisma.mediaItem.update({
-      where: { id: postId },
-      data: { views: { increment: 1 } },
-    });
-
-    cookieStore.set(`viewed_${postId}`, "true", {
-      maxAge: 60 * 60 * 24,
-      httpOnly: true,
-      sameSite: "strict",
-      path: "/",
-    });
-
-    return { success: true, alreadyViewed: false };
-  } catch (error) {
-    console.error("Error incrementing view:", error);
-    return { success: false, error: "Failed to increment view" };
-  }
-}
-
 export async function toggleLike(postId: number) {
   try {
-    const cookieStore = await cookies();
-    const cookieName = `liked_${postId}`;
-    const isCurrentlyLiked = cookieStore.get(cookieName)?.value === "true";
-
-    const updatedPost = await prisma.mediaItem.update({
+    // Get current like count from database
+    const currentPost = await prisma.mediaItem.findUnique({
       where: { id: postId },
-      data: {
-        likes: {
-          increment: isCurrentlyLiked ? -1 : 1,
-        },
-      },
       select: { likes: true },
     });
 
-    (await cookies()).set(cookieName, isCurrentlyLiked ? "false" : "true", {
-      maxAge: 60 * 60 * 24 * 365,
-      httpOnly: true,
-      sameSite: "strict",
-      path: "/",
-    });
+    if (!currentPost) {
+      return { success: false, liked: false, likes: 0 };
+    }
 
+    // We'll let the client tell us whether to increment or decrement
+    // This is handled by the clientLiked parameter
     return {
       success: true,
-      liked: !isCurrentlyLiked,
-      likes: updatedPost.likes,
+      liked: true, // Client will toggle this
+      likes: currentPost.likes,
     };
   } catch (error) {
     console.error("Error toggling like:", error);
@@ -107,25 +69,118 @@ export async function toggleLike(postId: number) {
     };
   }
 }
-
-export async function getClientLikeState(postId: number) {
-  const cookieStore = await cookies();
-  const liked = cookieStore.get(`liked_${postId}`)?.value === "true";
-  return { liked };
-}
-
-export async function getInitialLikeState(postId: number) {
+// Better approach - separate increment/decrement actions
+export async function incrementLike(postId: number) {
   try {
-    const cookieStore = await cookies();
-    const likedCookie = cookieStore.get(`liked_${postId}`);
+    const updatedPost = await prisma.mediaItem.update({
+      where: { id: postId },
+      data: {
+        likes: { increment: 1 },
+      },
+      select: { likes: true },
+    });
 
     return {
-      liked: likedCookie?.value === "true",
+      success: true,
+      likes: updatedPost.likes,
     };
-  } catch {
-    return { liked: false };
+  } catch (error) {
+    console.error("Error incrementing like:", error);
+    return { success: false, likes: 0 };
   }
 }
+
+export async function decrementLike(postId: number) {
+  try {
+    const updatedPost = await prisma.mediaItem.update({
+      where: { id: postId },
+      data: {
+        likes: { decrement: 1 },
+      },
+      select: { likes: true },
+    });
+
+    return {
+      success: true,
+      likes: updatedPost.likes,
+    };
+  } catch (error) {
+    console.error("Error decrementing like:", error);
+    return { success: false, likes: 0 };
+  }
+}
+
+export async function incrementView(postId: number) {
+  try {
+    await prisma.mediaItem.update({
+      where: { id: postId },
+      data: { views: { increment: 1 } },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error incrementing view:", error);
+    return { success: false, error: "Failed to increment view" };
+  }
+}
+
+export async function getReelsPaginated({
+  cursor,
+  limit = 10,
+}: {
+  cursor?: number;
+  limit?: number;
+}) {
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const reels = await prisma.mediaItem.findMany({
+      where: {
+        src: { not: null },
+        slug: { not: null },
+        ...(cursor ? { id: { lt: cursor } } : {}),
+      },
+      select: {
+        id: true,
+        slug: true,
+        src: true,
+        description: true,
+        likes: true,
+        views: true,
+        author: true,
+        createdAt: true,
+      },
+      orderBy: { id: "desc" },
+      take: limit,
+    });
+    
+
+    const hasMore = reels.length === limit;
+
+    return {
+      posts: reels.map((r) => ({
+        id: r.id,
+        slug: r.slug!,
+        src: r.src!,
+        isVideo: r.src!.toLowerCase().endsWith(".mp4"),
+        poster: null,
+        initialLikes: r.likes,
+        initialViews: r.views,
+        initialLiked: false,
+        caption: r.description ?? "",
+        author: r.author ?? "Anonymous",
+        createdAt: r.createdAt,
+      })),
+      hasMore,
+    };
+  } catch (error) {
+    console.error("Error fetching reels:", error);
+    return { posts: [], hasMore: false };
+  }
+}
+
+// Remove these functions - we don't need them anymore
+// export async function getClientLikeState(postId: number) { ... }
+// export async function getInitialLikeState(postId: number) { ... }
 
 export async function uploadMediaFile(file: File): Promise<string> {
   const bytes = await file.arrayBuffer();

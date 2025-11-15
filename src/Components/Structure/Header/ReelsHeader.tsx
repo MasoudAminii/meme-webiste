@@ -6,6 +6,7 @@ import { BsImageFill } from "react-icons/bs";
 import { HiSquares2X2 } from "react-icons/hi2";
 import { FaPenSquare } from "react-icons/fa";
 import InstallPWAButton from "@/Components/Structure/InstallPWAButton";
+import Link from "next/link";
 
 const navLinks = [
   {
@@ -49,26 +50,28 @@ const ReelsHeader = () => {
         }}
       >
         <div className="header-top flex max-w-[250px] flex-shrink-0 flex-col justify-between">
-          <div className="logo mb-8 flex items-center gap-4">
-            <div className="image-logo relative flex-shrink-0 overflow-hidden rounded-2xl">
-              <Image
-                src="/logo/shia-meme-logo.jpg"
-                alt="Logo"
-                width={80}
-                height={80}
-                priority
-                className="h-auto max-h-[160px] w-auto max-w-[160px]"
-              />
+          <Link href="/" className="mb-8" title="صفحه اصلی">
+            <div className="logo flex items-center gap-4">
+              <div className="image-logo relative flex-shrink-0 overflow-hidden rounded-2xl">
+                <Image
+                  src="/logo/shia-meme-logo.jpg"
+                  alt="Logo"
+                  width={80}
+                  height={80}
+                  priority
+                  className="h-auto max-h-[100px] w-auto max-w-[100px]"
+                />
+              </div>
+              <div className="flex flex-shrink-0 flex-col">
+                <span className="text-secondary text-xl font-extrabold">
+                  میم شیعه
+                </span>
+                <span className="text-secondary text-lg font-extrabold">
+                  shia meme
+                </span>
+              </div>
             </div>
-            <div className="flex flex-shrink-0 flex-col">
-              <span className="text-secondary text-xl font-extrabold">
-                میم شیعه
-              </span>
-              <span className="text-secondary text-lg font-extrabold">
-                shia meme
-              </span>
-            </div>
-          </div>
+          </Link>
           <div className="navlinks min-h-0 flex-1 overflow-y-auto">
             <NavLinks links={navLinks} />
           </div>

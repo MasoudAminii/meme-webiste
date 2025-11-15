@@ -232,7 +232,10 @@ const CreateFormInner: React.FC<CreateFormProps> = ({
 }) => {
   return (
     <div>
-      <form className="space-y-8" onSubmit={handleCreateUser}>
+      <form
+        className="space-y-8 max-lg:mb-24 max-sm:mb-20"
+        onSubmit={handleCreateUser}
+      >
         <div className="bg-bg-1 rounded-lg p-8 shadow-sm">
           <div className="mb-6 flex items-center gap-3">
             <div className="rounded-lg bg-blue-100 p-3">

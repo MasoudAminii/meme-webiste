@@ -314,7 +314,7 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
 
       {/* PREVIEW */}
       {activeTab === "preview" && (
-        <div className="space-y-6">
+        <div className="space-y-6 max-lg:mb-24 max-sm:mb-20">
           <div className="overflow-hidden rounded-[20px] shadow-sm">
             <div className="relative">
               {aboutData.BannerUrl ? (
@@ -446,8 +446,8 @@ export default function AboutContainer({ data }: { data: AboutData | null }) {
 
       {/* EDIT */}
       {activeTab === "edit" && (
-        <div>
-          <form className="space-y-8" action={formAction}>
+        <div className="max-lg:mb-24 max-sm:mb-20">
+          <form className="space-y-6" action={formAction}>
             <div className="bg-bg-1 rounded-lg p-8 shadow-sm">
               <div className="mb-6 flex items-center gap-3">
                 <div className="rounded-lg bg-blue-100 p-3">

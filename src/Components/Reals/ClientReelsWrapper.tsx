@@ -20,7 +20,8 @@ type Post = {
 };
 
 type Props = {
-  posts: Post[];
+  initialPosts: Post[]; // Changed from 'posts'
+  hasMore: boolean; // New prop
   initialIndex?: number;
 };
 
@@ -45,23 +46,53 @@ const isVideoFile = (src: string): boolean => {
   return videoExtensions.some((ext) => src.toLowerCase().includes(ext));
 };
 
-export default function ClientReelsWrapper({ posts, initialIndex = 0 }: Props) {
-  const transformedPosts = posts.map((post) => {
+export default function ClientReelsWrapper({
+  initialPosts,
+  hasMore: initialHasMore,
+  initialIndex = 0,
+}: Props) {
+  // ADD THIS DEFENSIVE CHECK AT THE TOP
+  if (
+    !initialPosts ||
+    !Array.isArray(initialPosts) ||
+    initialPosts.length === 0
+  ) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p>No reels available</p>
+      </div>
+    );
+  }
+
+  const loadMorePosts = async (cursor: number) => {
+    const { getReelsPaginated } = await import("@/actions/postsActions");
+    const result = await getReelsPaginated({ cursor, limit: 2 });
+    return result;
+  };
+  const transformedPosts = initialPosts.map((post) => {
     const resolvedSrc = resolveMediaPath(post.src);
 
     return {
-      ...post,
+      id: post.id,
+      slug: post.slug,
       src: resolvedSrc,
-      isVideo:
-        post.isVideo ??
-        (typeof post.src === "string" ? isVideoFile(resolvedSrc) : false),
+      isVideo: post.isVideo ?? isVideoFile(resolvedSrc),
+      poster: post.poster ?? null,
       initialLikes: post.initialLikes ?? 0,
       initialViews: post.initialViews ?? 0,
-      initialLiked: post.initialLiked ?? false, // This line is correct
+      initialLiked: post.initialLiked ?? false,
       caption: post.caption ?? "",
       author: post.author ?? "Unknown",
+      createdAt: post.createdAt,
     };
   });
 
-  return <ReelsFeed posts={transformedPosts} initialIndex={initialIndex} />;
+  return (
+    <ReelsFeed
+      initialPosts={transformedPosts}
+      initialHasMore={initialHasMore}
+      loadMorePosts={loadMorePosts}
+      initialIndex={initialIndex}
+    />
+  );
 }

@@ -26,10 +26,7 @@ export default function ThemeBanner() {
         suppressHydrationWarning
       >
         {!mounted ? (
-          <div
-            className="h-64 bg-gray-200 sm:h-80 dark:bg-gray-800"
-            suppressHydrationWarning
-          />
+          <div className="bg-skeleton h-64 sm:h-80" suppressHydrationWarning />
         ) : (
           <Image
             key={resolvedTheme}

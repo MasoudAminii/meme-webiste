@@ -830,7 +830,7 @@ export default function LinksContainer({ data }: { data: Link[] }) {
 
       {/* PREVIEW */}
       {activeTab === "preview" && (
-        <div dir="ltr" className="Links mt-4 max-lg:mb-28 md:mt-8">
+        <div dir="ltr" className="Links mt-4 max-lg:mb-24 max-sm:mb-20 md:mt-8">
           <Suspense
             fallback={
               <LinksGridSkeleton groups={chunkArray(optimisticLinks, 6)} />

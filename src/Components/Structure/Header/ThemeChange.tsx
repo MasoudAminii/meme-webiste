@@ -24,7 +24,9 @@ const ThemeChange = () => {
     <>
       {/* desktop switch (hidden on small screens) */}
       <div className="flex w-full items-center justify-between">
-        <span className="font-semibold max-lg:hidden">{isDark ? "حالت روز" : "حالت شب"}</span>
+        <span className="font-semibold max-lg:hidden">
+          {isDark ? "حالت روز" : "حالت شب"}
+        </span>
 
         <label className="theme-switch max-lg:hidden">
           <input
@@ -67,6 +69,8 @@ const ThemeChange = () => {
             alt={isDark ? "Dark mode icon" : "Light mode icon"}
             width={40}
             height={40}
+            unoptimized
+            quality={100}
             priority
             className="object-contain"
           />

@@ -25,30 +25,30 @@ function StatsCardsSkeleton() {
             {/* Header with icon */}
             <div className="mb-4 flex items-start justify-between">
               <div className="flex-1 space-y-2">
-                <div className="h-4 w-24 animate-pulse rounded bg-gray-300/50" />
-                <div className="h-3 w-20 animate-pulse rounded bg-gray-300/30" />
+                <div className="bg-skeleton h-4 w-24 animate-pulse rounded" />
+                <div className="bg-skeleton-highlight h-3 w-20 animate-pulse rounded" />
               </div>
 
               <div className="bg-accent/10 rounded-xl p-3 shadow-sm">
-                <div className="h-6 w-6 animate-pulse rounded bg-gray-300/50" />
+                <div className="bg-skeleton h-6 w-6 animate-pulse rounded" />
               </div>
             </div>
 
             {/* Main value */}
             <div className="mb-3">
-              <div className="h-9 w-20 animate-pulse rounded bg-gray-300/50" />
+              <div className="bg-skeleton h-9 w-20 animate-pulse rounded" />
             </div>
 
             {/* Change indicator and sparkline */}
             <div className="flex items-center justify-between">
-              <div className="h-6 w-16 animate-pulse rounded-full bg-gray-300/50" />
+              <div className="bg-skeleton h-6 w-16 animate-pulse rounded-full" />
 
               {/* Sparkline bars skeleton */}
               <div className="flex items-end gap-1 opacity-60">
                 {[12, 16, 10, 14, 18, 13].map((h, idx) => (
                   <div
                     key={idx}
-                    className="w-1 animate-pulse rounded-full bg-gray-300/50"
+                    className="bg-skeleton w-1 animate-pulse rounded-full"
                     style={{ height: `${h}px` }}
                   />
                 ))}
@@ -68,13 +68,13 @@ function RecentActivitySkeleton() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-6 w-32 animate-pulse rounded bg-gray-300/50" />
-          <div className="h-6 w-12 animate-pulse rounded-full bg-gray-300/50" />
+          <div className="bg-skeleton h-6 w-32 animate-pulse rounded" />
+          <div className="bg-skeleton h-6 w-12 animate-pulse rounded-full" />
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="h-8 w-24 animate-pulse rounded-lg bg-gray-300/50" />
-          <div className="h-8 w-8 animate-pulse rounded-lg bg-gray-300/50" />
+          <div className="bg-skeleton h-8 w-24 animate-pulse rounded-lg" />
+          <div className="bg-skeleton h-8 w-8 animate-pulse rounded-lg" />
         </div>
       </div>
 
@@ -84,16 +84,16 @@ function RecentActivitySkeleton() {
           <div key={i} className="flex items-start gap-3 rounded-xl p-3">
             {/* Avatar with badge */}
             <div className="relative">
-              <div className="h-10 w-10 animate-pulse rounded-full bg-gray-300/50" />
-              <div className="absolute -right-1 -bottom-1 h-5 w-5 animate-pulse rounded-full bg-gray-300/50" />
+              <div className="bg-skeleton h-10 w-10 animate-pulse rounded-full" />
+              <div className="bg-skeleton-highlight absolute -right-1 -bottom-1 h-5 w-5 animate-pulse rounded-full" />
             </div>
 
             {/* Content */}
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex items-start justify-between">
                 <div className="flex-1 space-y-1">
-                  <div className="h-4 w-48 animate-pulse rounded bg-gray-300/50" />
-                  <div className="h-3 w-32 animate-pulse rounded bg-gray-300/30" />
+                  <div className="bg-skeleton h-4 w-48 animate-pulse rounded" />
+                  <div className="bg-skeleton-highlight h-3 w-32 animate-pulse rounded" />
                 </div>
               </div>
             </div>
@@ -120,7 +120,7 @@ export default async function Dashboard() {
   }
 
   return (
-    <div className="">
+    <div className="max-lg:mb-24 max-sm:mb-20">
       <div className="bg-bg-1 mb-6 flex items-center justify-between rounded-2xl p-6 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold">داشبورد مدیریت</h1>

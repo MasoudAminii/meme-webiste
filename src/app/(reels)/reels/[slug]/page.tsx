@@ -1,9 +1,9 @@
 // app/reels/[slug]/page.tsx
-import { notFound } from "next/navigation";
-import prisma from "@/lib/db";
+import { getReelsPaginated } from "@/actions/postsActions";
 import ClientReelsWrapper from "@/Components/Reals/ClientReelsWrapper";
-import { cookies } from "next/headers";
+import prisma from "@/lib/db";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -26,21 +26,6 @@ export async function generateMetadata({
   };
 }
 
-async function getLikeStates(postIds: number[]) {
-  try {
-    const cookieStore = await cookies();
-    const likeStates = new Map<number, boolean>();
-    for (const id of postIds) {
-      const likedCookie = cookieStore.get(`liked_${id}`);
-      likeStates.set(id, likedCookie?.value === "true");
-    }
-    return likeStates;
-  } catch (error) {
-    console.error("Error getting like states:", error);
-    return new Map<number, boolean>();
-  }
-}
-
 export default async function ReelSlugPage({
   params,
 }: {
@@ -48,63 +33,34 @@ export default async function ReelSlugPage({
 }) {
   const { slug } = await params;
 
-  // Get all reels
-  const reels = await prisma.mediaItem.findMany({
-    where: {
-      src: { not: null },
-      slug: { not: null },
-    },
-    select: {
-      id: true,
-      slug: true,
-      src: true,
-      description: true,
-      likes: true,
-      views: true,
-      author: true,
-      createdAt: true,
-    },
-    orderBy: [{ createdAt: "desc" }],
-  });
+  // Get initial batch
+  const initialData = await getReelsPaginated({ limit: 20 });
 
-  if (!reels || reels.length === 0) {
+  // ADD THIS CHECK
+  if (!initialData || !initialData.posts || initialData.posts.length === 0) {
     notFound();
   }
 
-  const postIds = reels.map((r) => r.id);
-  const likeStates = await getLikeStates(postIds);
+  // Find the requested slug
+  const foundIndex = initialData.posts.findIndex((p) => p.slug === slug);
 
-  const allPosts = reels.map((r) => ({
-    id: r.id,
-    slug: r.slug!,
-    src: r.src!,
-    isVideo: r.src!.toLowerCase().endsWith(".mp4"),
-    poster: null,
-    initialLikes: r.likes,
-    initialViews: r.views,
-    initialLiked: likeStates.get(r.id) ?? false,
-    caption: r.description ?? "",
-    author: r.author ?? "Anonymous",
-    createdAt: r.createdAt, // ← Add this line
-  }));
-
-  // Find the index of the requested slug
-  const foundIndex = allPosts.findIndex((p) => p.slug === slug);
-
-  // If slug doesn't exist, show 404
   if (foundIndex === -1) {
     notFound();
   }
 
-  // Reorder posts to start from the found slug
+  // Reorder to start from the found slug
   const reorderedPosts = [
-    ...allPosts.slice(foundIndex),
-    ...allPosts.slice(0, foundIndex),
+    ...initialData.posts.slice(foundIndex),
+    ...initialData.posts.slice(0, foundIndex),
   ];
 
   return (
     <div className="RealsMedia">
-      <ClientReelsWrapper posts={reorderedPosts} initialIndex={0} />
+      <ClientReelsWrapper
+        initialPosts={reorderedPosts}
+        hasMore={initialData.hasMore}
+        initialIndex={0}
+      />
     </div>
   );
 }

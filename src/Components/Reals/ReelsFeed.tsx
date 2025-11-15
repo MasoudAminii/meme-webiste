@@ -1,7 +1,7 @@
 // ReelsFeed.tsx - Fixed version with no refresh issues
 "use client";
 
-import { toggleLike } from "@/actions/postsActions";
+import { decrementLike, incrementLike } from "@/actions/postsActions";
 import type { StaticImageData } from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FaHeart, FaShare } from "react-icons/fa";
@@ -17,24 +17,72 @@ type Post = {
   initialViews?: number;
   initialLiked?: boolean;
   caption?: string;
-  // allow null because DB may return null
   author?: string | null;
-  // accept Date or ISO string (defensive)
   createdAt?: Date | string | null;
 };
 
 type Props = {
-  posts: Post[];
+  initialPosts: Post[];
+  initialHasMore: boolean;
+  loadMorePosts: (
+    cursor: number,
+  ) => Promise<{ posts: Post[]; hasMore: boolean }>;
   initialIndex?: number;
 };
+// Add this helper function after imports, before the component
+const transformPost = (post: Post) => {
+  const resolveMediaPath = (src: string | StaticImageData): string => {
+    // Handle StaticImageData type
+    if (typeof src !== "string") {
+      return src.src;
+    }
 
-export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
+    // Handle string paths
+    if (src.startsWith("http") || src.startsWith("/")) {
+      return src;
+    }
+    return `/gallery/${src}`;
+  };
+
+  const isVideoFile = (src: string): boolean => {
+    const videoExtensions = [".mp4", ".webm", ".ogg", ".avi", ".mov", ".mkv"];
+    return videoExtensions.some((ext) => src.toLowerCase().includes(ext));
+  };
+
+  const resolvedSrc = resolveMediaPath(post.src);
+
+  return {
+    id: post.id,
+    slug: post.slug,
+    src: resolvedSrc,
+    isVideo: post.isVideo ?? isVideoFile(resolvedSrc),
+    poster: post.poster ?? null,
+    initialLikes: post.initialLikes ?? 0,
+    initialViews: post.initialViews ?? 0,
+    initialLiked: post.initialLiked ?? false,
+    caption: post.caption ?? "",
+    author: post.author ?? "Unknown",
+    createdAt: post.createdAt,
+  };
+};
+
+export default function ReelsFeed({
+  initialPosts,
+  initialHasMore,
+  loadMorePosts,
+  initialIndex = 0,
+}: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<number | null>(null);
   const currentIndexRef = useRef<number>(initialIndex);
+
+  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const loadTriggerRef = useRef<HTMLDivElement | null>(null);
 
   // Track if we're currently updating to prevent duplicate updates
   const isUpdatingRef = useRef(false);
@@ -48,51 +96,139 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
   const lastUrlRef = useRef<string>("");
   const hasInitializedRef = useRef(false);
 
-  const [postsLikeData, setPostsLikeData] = useState(() =>
-    posts.reduce(
+  useEffect(() => {
+    if (!hasMore || isLoadingMore) return;
+
+    const observer = new IntersectionObserver(
+      async (entries) => {
+        const [entry] = entries;
+
+        if (entry.isIntersecting && !isLoadingMore && hasMore) {
+          const lastPostId = posts[posts.length - 1]?.id;
+          if (!lastPostId) {
+            setIsLoadingMore(false);
+            return;
+          }
+
+          setIsLoadingMore(true);
+
+          try {
+            const result = await loadMorePosts(lastPostId);
+
+            if (result.posts && result.posts.length > 0) {
+              // TRANSFORM THE NEW POSTS - ADD THIS BLOCK
+              if (result.posts && result.posts.length > 0) {
+                const transformedNewPosts = result.posts.map(transformPost);
+                setPosts((prev) => [...prev, ...transformedNewPosts]);
+                setHasMore(result.hasMore);
+              }
+            } else {
+              setHasMore(false);
+            }
+          } catch (error) {
+            console.error("Error loading more posts:", error);
+            setHasMore(false);
+          } finally {
+            setIsLoadingMore(false);
+          }
+        }
+      },
+      {
+        root: null,
+        rootMargin: "500px",
+        threshold: 0,
+      },
+    );
+
+    if (loadTriggerRef.current) {
+      observer.observe(loadTriggerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [posts, hasMore, isLoadingMore, loadMorePosts]);
+
+  const [postsLikeData, setPostsLikeData] = useState(() => {
+    if (typeof window === "undefined") {
+      return posts.reduce(
+        (acc, post) => {
+          acc[post.id] = {
+            liked: post.initialLiked || false,
+            likes: post.initialLikes || 0,
+          };
+          return acc;
+        },
+        {} as Record<number, { liked: boolean; likes: number }>,
+      );
+    }
+
+    // Use localStorage on client
+    return posts.reduce(
       (acc, post) => {
+        const stored = localStorage.getItem(`liked_${post.id}`);
         acc[post.id] = {
-          liked: post.initialLiked || false,
+          liked: stored === "true",
           likes: post.initialLikes || 0,
         };
         return acc;
       },
       {} as Record<number, { liked: boolean; likes: number }>,
-    ),
-  );
+    );
+  });
 
   const likeThrottleRef = useRef<Record<number, boolean>>({});
 
-  const handleToggleLike = useCallback((postId: number) => {
-    if (likeThrottleRef.current[postId]) return;
+  const handleToggleLike = useCallback(
+    (postId: number) => {
+      if (likeThrottleRef.current[postId]) return;
 
-    likeThrottleRef.current[postId] = true;
-    setTimeout(() => {
-      likeThrottleRef.current[postId] = false;
-    }, 600);
+      likeThrottleRef.current[postId] = true;
+      setTimeout(() => {
+        likeThrottleRef.current[postId] = false;
+      }, 600);
 
-    // Optimistic update
-    setPostsLikeData((prev) => ({
-      ...prev,
-      [postId]: {
-        liked: !prev[postId].liked,
-        likes: prev[postId].likes + (prev[postId].liked ? -1 : 1),
-      },
-    }));
+      const wasLiked = postsLikeData[postId].liked;
 
-    // Call server in background
-    toggleLike(postId).then((result) => {
-      if (result.success) {
-        setPostsLikeData((prev) => ({
-          ...prev,
-          [postId]: {
-            liked: result.liked,
-            likes: result.likes,
-          },
-        }));
+      // Optimistic update
+      setPostsLikeData((prev) => ({
+        ...prev,
+        [postId]: {
+          liked: !prev[postId].liked,
+          likes: prev[postId].likes + (prev[postId].liked ? -1 : 1),
+        },
+      }));
+
+      // Save to localStorage
+      localStorage.setItem(`liked_${postId}`, (!wasLiked).toString());
+
+      // Call server in background
+      if (wasLiked) {
+        decrementLike(postId).then((result) => {
+          if (result.success) {
+            setPostsLikeData((prev) => ({
+              ...prev,
+              [postId]: {
+                ...prev[postId],
+                likes: result.likes,
+              },
+            }));
+          }
+        });
+      } else {
+        incrementLike(postId).then((result) => {
+          if (result.success) {
+            setPostsLikeData((prev) => ({
+              ...prev,
+              [postId]: {
+                ...prev[postId],
+                likes: result.likes,
+              },
+            }));
+          }
+        });
       }
-    });
-  }, []);
+    },
+    [postsLikeData],
+  );
 
   const formatTimeAgo = (date?: Date | string | null) => {
     if (!date) return "همین الان";
@@ -132,11 +268,12 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
         const path = `${routePrefix}/${slug}`;
 
         try {
-          // ALWAYS use replaceState - NEVER use pushState
+          // Use replaceState to update URL without triggering navigation
+          const url = new URL(path, window.location.origin);
           window.history.replaceState(
             { slug, scrollPos: window.scrollY },
             "",
-            path,
+            url.pathname,
           );
           lastUrlRef.current = slug;
         } catch (err) {
@@ -144,7 +281,7 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
         } finally {
           isUpdatingRef.current = false;
         }
-      }, 200); // Increased delay to 200ms
+      }, 300); // Increased debounce
     },
     [getRoutePrefix],
   );
@@ -174,68 +311,88 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
     [],
   );
 
-  // Initial scroll - only run once
-  // Initial scroll - only run once
+  // Replace this entire useEffect (around line 180-200)
   useEffect(() => {
     if (hasInitializedRef.current) return;
     hasInitializedRef.current = true;
 
-    const t = window.setTimeout(() => {
-      scrollToIndex(initialIndex, { behavior: "auto" });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToIndex(initialIndex, { behavior: "auto" });
 
-      if (posts[initialIndex]?.slug) {
-        lastUrlRef.current = posts[initialIndex].slug;
-        const routePrefix = getRoutePrefix();
-        window.history.replaceState(
-          { slug: posts[initialIndex].slug, scrollPos: 0 },
-          "",
-          `${routePrefix}/${posts[initialIndex].slug}`,
-        );
-      }
-    }, 0);
+        if (posts[initialIndex]?.slug) {
+          lastUrlRef.current = posts[initialIndex].slug;
+          const routePrefix = getRoutePrefix();
+          window.history.replaceState(
+            { slug: posts[initialIndex].slug, scrollPos: 0 },
+            "",
+            `${routePrefix}/${posts[initialIndex].slug}`,
+          );
+        }
+      });
+    });
+  }, [initialIndex, posts, scrollToIndex, getRoutePrefix]); // ADD THESE
 
-    return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Intentionally empty - only run once on mount
+  // In ReelsFeed.tsx - Replace the IntersectionObserver useEffect
 
-  // IntersectionObserver - with better throttling
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     observerRef.current?.disconnect();
 
-    // Debounce mechanism for intersection updates
     let updateTimeout: number | null = null;
+    let lastProcessedIndex = -1;
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        // Only process if not currently scrolling programmatically
+        // CRITICAL: Don't process if scrolling programmatically or updating
         if (isScrollingRef.current || isUpdatingRef.current) return;
 
+        // Find the most visible entry
+        let mostVisible = {
+          entry: null as IntersectionObserverEntry | null,
+          ratio: 0,
+        };
+
         entries.forEach((entry) => {
-          const idx = Number((entry.target as HTMLElement).dataset.index ?? 0);
-
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.7) {
-            if (idx !== currentIndexRef.current) {
-              // Clear any pending updates
-              if (updateTimeout) window.clearTimeout(updateTimeout);
-
-              // Debounce the update
-              updateTimeout = window.setTimeout(() => {
-                setCurrentIndex(idx);
-                currentIndexRef.current = idx;
-                const slug = posts[idx]?.slug;
-                if (slug) updateUrl(slug);
-              }, 100);
-            }
+          if (
+            entry.isIntersecting &&
+            entry.intersectionRatio > mostVisible.ratio
+          ) {
+            mostVisible = { entry, ratio: entry.intersectionRatio };
           }
         });
+
+        if (mostVisible.entry && mostVisible.ratio >= 0.75) {
+          const idx = Number(
+            (mostVisible.entry.target as HTMLElement).dataset.index ?? 0,
+          );
+
+          // Only update if this is a NEW index and significantly visible
+          if (idx !== currentIndexRef.current && idx !== lastProcessedIndex) {
+            lastProcessedIndex = idx;
+
+            // Clear any pending updates
+            if (updateTimeout) window.clearTimeout(updateTimeout);
+
+            // Debounce the update
+            updateTimeout = window.setTimeout(() => {
+              // Double-check we're still not scrolling
+              if (isScrollingRef.current || isUpdatingRef.current) return;
+
+              setCurrentIndex(idx);
+              currentIndexRef.current = idx;
+              const slug = posts[idx]?.slug;
+              if (slug) updateUrl(slug);
+            }, 200);
+          }
+        }
       },
       {
         root: container,
-        threshold: [0.7, 0.8, 0.9], // More aggressive threshold
-        rootMargin: "-5% 0px -5% 0px", // Smaller margin
+        threshold: [0.5, 0.75, 0.9], // Multiple thresholds
+        rootMargin: "-5% 0px -5% 0px", // Require more visibility
       },
     );
 
@@ -271,7 +428,7 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
   // Popstate handling
   useEffect(() => {
     const onPop = (e: PopStateEvent) => {
-      e.preventDefault(); // Prevent browser navigation
+      // Don't prevent default - let browser handle it naturally
       const state = e.state;
       if (!state?.slug) return;
 
@@ -343,8 +500,12 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
   return (
     <div
       ref={containerRef}
-      className="no-scrollbar -webkit-overflow-scrolling-touch mx-auto flex h-[100dvh] w-full snap-y snap-mandatory flex-col justify-center overflow-y-auto lg:h-[calc(100vh)] lg:gap-6"
-      style={{ overscrollBehavior: "contain" }}
+      className="no-scrollbar -webkit-overflow-scrolling-touch mx-auto flex h-[100dvh] w-full snap-y snap-mandatory flex-col justify-start overflow-y-scroll lg:h-[calc(100vh)] lg:gap-6"
+      style={{
+        overscrollBehavior: "contain",
+        scrollSnapType: "y mandatory",
+        scrollSnapStop: "always",
+      }}
       role="list"
     >
       {posts.map((p, i) => {
@@ -377,8 +538,12 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
             key={p.id}
             data-index={i}
             data-slug={p.slug}
-            className="reel-item relative flex h-[100dvh] w-full flex-none snap-start items-end overflow-hidden lg:mb-8 lg:h-[calc(100vh-2.5rem)] lg:overflow-visible lg:py-6 lg:pb-1"
+            className="reel-item relative flex h-[100dvh] w-full flex-none snap-start snap-always items-end overflow-hidden lg:mb-8 lg:h-[calc(100vh-2.5rem)] lg:overflow-visible lg:py-6 lg:pb-1"
             role="listitem"
+            style={{
+              scrollSnapAlign: "start",
+              scrollSnapStop: "always",
+            }}
           >
             {(p.caption || p.author) && (
               <div className="z-10 max-w-xs min-w-xs max-lg:hidden">
@@ -467,6 +632,7 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
 
             <div className="relative h-full w-full bg-black sm:min-w-[400px] lg:max-w-[600px] lg:rounded-3xl">
               <ReelsCard
+                key={`reel-${p.id}-${p.slug}-${i}`} // Change this line
                 postId={p.id}
                 src={resolvedSrc}
                 isVideo={p.isVideo}
@@ -475,6 +641,8 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
                 initialViews={p.initialViews}
                 initialLiked={p.initialLiked}
                 caption={p.caption}
+                author={p.author}
+                createdAt={p.createdAt}
                 isActive={i === currentIndex}
               />
             </div>
@@ -483,6 +651,20 @@ export default function ReelsFeed({ posts, initialIndex = 0 }: Props) {
           </div>
         );
       })}
+
+      {hasMore && (
+        <div
+          ref={loadTriggerRef}
+          className="flex h-screen w-full snap-start items-center justify-center"
+        >
+          {isLoadingMore && (
+            <div className="flex items-center gap-2 text-white">
+              <span>...در حال بارگذاری بیشتر</span>
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

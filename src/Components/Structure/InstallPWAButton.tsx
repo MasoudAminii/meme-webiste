@@ -59,14 +59,16 @@ export default function InstallPWAButton() {
       <div>
         <button
           onClick={handleInstallClick}
-          className="image-logo relative overflow-hidden rounded-lg bg-[#FFFFFF] p-2 shadow-lg lg:hidden dark:bg-white/20"
+          className={`image-logo relative overflow-hidden rounded-lg shadow-lg`}
         >
           <Image
             src={Pwa}
-            alt="Logo"
-            width={28}
-            height={28}
+            alt="PWA"
+            width={40}
+            height={40}
+            unoptimized
             priority
+            quality={100}
             className="object-contain"
           />
         </button>
