@@ -8,6 +8,7 @@ import { notFound } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 // Generate metadata for the page
+// Modify your generateMetadata function
 export async function generateMetadata({
   params,
 }: {
@@ -17,12 +18,27 @@ export async function generateMetadata({
 
   const post = await prisma.mediaItem.findUnique({
     where: { slug },
-    select: { description: true },
+    select: {
+      description: true,
+      src: true, // Add this
+    },
   });
 
   return {
-    title: post ? `${slug} | حلقه فیلم` : "حلقه فیلم",
+    title: post ? `${slug} | ` : "حلقه فیلم",
     description: post?.description || "مشاهده رئال‌ها و ویدیوهای سرگرمی",
+    openGraph: {
+      title: post ? `${slug} | ` : "حلقه فیلم",
+      description: post?.description || "مشاهده رئال‌ها و ویدیوهای سرگرمی",
+      images: [
+        {
+          url: post?.src || "/banner/main-banner.jpg",
+          width: 1200,
+          height: 630,
+          alt: slug,
+        },
+      ],
+    },
   };
 }
 
