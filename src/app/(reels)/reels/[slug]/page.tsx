@@ -32,7 +32,7 @@ export async function generateMetadata({
       description: post?.description || "مشاهده رئال‌ها و ویدیوهای سرگرمی",
       images: [
         {
-          url: post?.src || "/banner/main-banner.jpg",
+          url: `/gallery/${post?.src}` || "/banner/main-banner.jpg",
           width: 1200,
           height: 630,
           alt: slug,

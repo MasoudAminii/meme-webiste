@@ -65,9 +65,6 @@ const KEYWORDS_EN = [
 const DESCRIPTION_FA =
   "شیعه‌میم؛ بزرگترین پلتفرم ساخت و اشتراک میم‌های شیعی و اسلامی. مرجع کامل محتوای طنز مذهبی، میم‌های اهل‌بیت، محرم، عاشورا و اربعین. با ابزار رایگان میم‌ساز، هزاران میم حلال و آموزنده.";
 
-const DESCRIPTION_EN =
-  "ShiaMeme - The ultimate platform for Shia and Islamic memes. Create, share and enjoy halal humor, religious content, Muharram, Ashura and Arbaeen memes. Free meme creator tools and thousands of Shia memes.";
-
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
 
@@ -125,8 +122,6 @@ export const metadata: Metadata = {
     ],
     locale: "fa_IR",
     type: "website",
-    // اضافه کردن اطلاعات بیشتر
-    countryName: "Iran",
   },
 
   // Twitter/X بهبود یافته
@@ -186,12 +181,8 @@ export const metadata: Metadata = {
     },
   },
 
-
-
   // دسته‌بندی
   category: "Entertainment",
-
-
 };
 
 // JSON-LD Structured Data - این را در layout.tsx یا page.tsx اضافه کنید
