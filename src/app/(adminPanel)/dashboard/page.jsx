@@ -115,7 +115,21 @@ async function RecentActivityWrapper() {
 export default async function Dashboard() {
   const session = await getServerSession(authOptions);
 
-  if (!session) {
+  if (!session || !session.user || !session.user.id) {
+    redirect("/signin");
+  }
+
+  try {
+    const userExists = await prisma.user.findUnique({
+      where: { id: parseInt(session.user.id) },
+      select: { id: true },
+    });
+
+    if (!userExists) {
+      redirect("/signin");
+    }
+  } catch (error) {
+    console.error("Error verifying user:", error);
     redirect("/signin");
   }
 

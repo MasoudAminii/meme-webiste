@@ -111,6 +111,34 @@ export default function AdminHeader({ username = null }) {
     setLoading(false);
     router.push("/signin");
   }
+
+  useEffect(() => {
+    // Check session validity immediately
+    if (session === null || !session?.user?.id) {
+      router.push("/signin");
+      return;
+    }
+
+    // Poll session every 5 seconds to detect if user was deleted
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch("/api/auth/session");
+        const sessionData = await response.json();
+
+        // If session is invalid or user ID is missing, force logout
+        if (!sessionData || !sessionData.user || !sessionData.user.id) {
+          clearInterval(interval);
+          await signOut({ redirect: false });
+          router.push("/signin");
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [session, router]);
+
   return (
     <>
       <nav className="bg-bg-1 border-light-white sticky top-0 z-50 flex min-h-screen w-80 min-w-[320px] flex-col justify-between border-r shadow-xl max-lg:hidden">

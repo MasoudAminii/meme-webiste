@@ -235,7 +235,6 @@ export async function deleteUser(id: number | string) {
       return { success: false, message: "آیدی نامعتبر است" };
     }
 
-    // Find the existing user
     const existingUser = await prisma.user.findUnique({
       where: { id: numericId },
     });
@@ -244,7 +243,6 @@ export async function deleteUser(id: number | string) {
       return { success: false, message: "کاربر یافت نشد" };
     }
 
-    // Optional: Prevent deleting the last admin user
     if (existingUser.role === "ADMIN") {
       const adminCount = await prisma.user.count({
         where: { role: "ADMIN" },
@@ -258,7 +256,6 @@ export async function deleteUser(id: number | string) {
       }
     }
 
-    // Delete user from database
     await prisma.user.delete({
       where: { id: numericId },
     });
@@ -275,11 +272,15 @@ export async function deleteUser(id: number | string) {
         },
       });
     }
-    // Revalidate paths so cached pages update
-    revalidatePath("/dashboard/users");
-    revalidatePath("/admin/users");
 
-    return { success: true, message: "کاربر با موفقیت حذف شد" };
+    revalidatePath("/dashboard/users");
+
+    // ADD THIS: Return the deleted user ID so we can notify clients
+    return {
+      success: true,
+      message: "کاربر با موفقیت حذف شد",
+      deletedUserId: numericId, // Add this
+    };
   } catch (error) {
     console.error("Error deleting user:", error);
     return {
@@ -289,7 +290,6 @@ export async function deleteUser(id: number | string) {
     };
   }
 }
-
 /**
  * Bulk delete multiple users
  */
