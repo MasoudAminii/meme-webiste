@@ -118,7 +118,7 @@ export const metadata: Metadata = {
     url: SITE_URL,
     images: [
       {
-        url: `/banner/main-banner.jpeg`, // ✅ Absolute URL
+        url: `${SITE_URL}/banner/main-banner.jpeg`, // ✅ FIXED
         width: 1200,
         height: 630,
         alt: `${SITE_NAME_FA} - میم‌های شیعی و اسلامی`,
@@ -134,8 +134,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: `${SITE_NAME_FA} - رسانه میم‌های شیعی`,
     description: DESCRIPTION_FA,
-    images: [`/banner/main-banner.jpeg`], // ✅ Absolute URL
-    creator: "@shiameme", // اگر اکانت توییتر دارید تغییر دهید
+    images: [`${SITE_URL}/banner/main-banner.jpeg`], // ✅ Add SITE_URL
+    creator: "@shiameme",
     site: "@shiameme",
   },
 
