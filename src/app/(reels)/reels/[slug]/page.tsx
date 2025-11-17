@@ -27,8 +27,8 @@ export async function generateMetadata({
   });
 
   const ogImage = post?.src
-    ? `/gallery/${post.src}` // Absolute URL
-    : `/banner/main-banner.jpg`; // Fallback
+    ? new URL(`/gallery/${post.src}`, SITE_URL).toString()
+    : new URL("/banner/main-banner.jpg", SITE_URL).toString();
 
   return {
     metadataBase: new URL(SITE_URL),

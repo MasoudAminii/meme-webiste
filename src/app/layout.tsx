@@ -78,6 +78,11 @@ export const metadata: Metadata = {
 
   keywords: [...KEYWORDS_FA, ...KEYWORDS_EN],
 
+  other: {
+    "og:locale": "fa_IR",
+    "og:locale:alternate": "en_US",
+  },
+
   authors: [
     {
       name: `تیم ${SITE_NAME_FA}`,
