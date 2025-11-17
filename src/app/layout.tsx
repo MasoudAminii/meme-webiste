@@ -10,9 +10,7 @@ import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 const SITE_NAME_FA = "شیعه‌ میم";
-const SITE_NAME_EN = "ShiaMeme";
 
-// کلمات کلیدی جامع برای SEO فارسی و انگلیسی
 const KEYWORDS_FA = [
   "میم شیعه",
   "شیعه میم",
@@ -141,12 +139,8 @@ export const metadata: Metadata = {
 
   // آیکون‌ها و تصاویر اپلیکیشن
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    icon: [{ url: "./favicon.ico", sizes: "any" }],
+    apple: [{ url: "./favicon.ico", sizes: "180x180", type: "image/png" }],
     shortcut: "/favicon.ico",
   },
 
