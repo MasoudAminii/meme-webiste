@@ -122,7 +122,7 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         alt: `${SITE_NAME_FA} - میم‌های شیعی و اسلامی`,
-        type: "image/jpeg",
+        type: "image",
       },
     ],
     locale: "fa_IR",
@@ -188,40 +188,6 @@ export const metadata: Metadata = {
 
   // دسته‌بندی
   category: "Entertainment",
-};
-
-// JSON-LD Structured Data - این را در layout.tsx یا page.tsx اضافه کنید
-export const jsonLdWebsite = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: SITE_NAME_FA,
-  alternateName: SITE_NAME_EN,
-  url: SITE_URL,
-  description: DESCRIPTION_FA,
-  inLanguage: ["fa-IR", "en-US"],
-  potentialAction: {
-    "@type": "SearchAction",
-    target: {
-      "@type": "EntryPoint",
-      urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
-    },
-    "query-input": "required name=search_term_string",
-  },
-};
-
-export const jsonLdOrganization = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: SITE_NAME_FA,
-  url: SITE_URL,
-  logo: `${SITE_URL}/logo.png`,
-  description: DESCRIPTION_FA,
-  sameAs: [
-    // اینجا لینک شبکه‌های اجتماعی خود را اضافه کنید
-    "https://instagram.com/shiameme",
-    "https://twitter.com/shiameme",
-    "https://t.me/shiameme",
-  ],
 };
 
 const estedad = localFont({
@@ -290,16 +256,16 @@ export default function RootLayout({
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
       <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdWebsite) }}
+        <meta property="og:locale" content="fa_IR" />
+        <meta httpEquiv="Content-Language" content="fa" />
+        <meta name="language" content="Persian" />
+        <meta
+          property="og:image"
+          content={`${SITE_URL}/banner/main-banner.jpeg`}
         />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(jsonLdOrganization),
-          }}
-        />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:type" content="image/jpeg" />
       </head>
       <body
         className={`${estedad.variable} ${inter.variable} font-sans antialiased`}
