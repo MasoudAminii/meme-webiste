@@ -9,6 +9,8 @@ export const dynamic = "force-dynamic";
 
 // Generate metadata for the page
 // Modify your generateMetadata function
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export async function generateMetadata({
   params,
 }: {
@@ -20,24 +22,34 @@ export async function generateMetadata({
     where: { slug },
     select: {
       description: true,
-      src: true, // Add this
+      src: true,
     },
   });
 
+  const ogImage = post?.src
+    ? `${SITE_URL}/gallery/${post.src}` // Absolute URL
+    : `${SITE_URL}/banner/main-banner.jpg`; // Fallback
+
   return {
-    title: post ? `${slug} | ` : "حلقه فیلم",
+    metadataBase: new URL(SITE_URL),
+    title: post ? `${slug}` : "حلقه فیلم", // Removed extra " | "
     description: post?.description || "مشاهده رئال‌ها و ویدیوهای سرگرمی",
     openGraph: {
-      title: post ? `${slug} | ` : "حلقه فیلم",
+      title: post ? `${slug}` : "حلقه فیلم",
       description: post?.description || "مشاهده رئال‌ها و ویدیوهای سرگرمی",
       images: [
         {
-          url: `/gallery/${post?.src}` || "/banner/main-banner.jpg",
+          url: ogImage, // ✅ Use the fixed absolute URL
           width: 1200,
           height: 630,
           alt: slug,
         },
       ],
+      type: "video.other", // ✅ Better OG type for video content
+    },
+    twitter: {
+      card: "summary_large_image",
+      images: [ogImage],
     },
   };
 }
