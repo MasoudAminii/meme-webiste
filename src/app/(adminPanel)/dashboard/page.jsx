@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/authOptions";
 import { getActivities } from "@/actions/activityActions";
 import { Suspense } from "react";
+import prisma from "@/lib/db"; // ADD THIS LINE
 
 // Skeleton loading component for StatsCards
 function StatsCardsSkeleton() {
