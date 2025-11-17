@@ -9,7 +9,7 @@ import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-const SITE_NAME_FA = "شیعه‌میم";
+const SITE_NAME_FA = "شیعه‌ میم";
 const SITE_NAME_EN = "ShiaMeme";
 
 // کلمات کلیدی جامع برای SEO فارسی و انگلیسی
@@ -113,7 +113,7 @@ export const metadata: Metadata = {
     url: SITE_URL,
     images: [
       {
-        url: "banner/main-banner.jpg",
+        url: `${SITE_URL}/banner/main-banner.jpg`, // ✅ Absolute URL
         width: 1200,
         height: 630,
         alt: `${SITE_NAME_FA} - میم‌های شیعی و اسلامی`,
@@ -129,7 +129,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: `${SITE_NAME_FA} - رسانه میم‌های شیعی`,
     description: DESCRIPTION_FA,
-    images: ["/banner/main-banner.jpg"],
+    images: [`${SITE_URL}/banner/main-banner.jpg`], // ✅ Absolute URL
     creator: "@shiameme", // اگر اکانت توییتر دارید تغییر دهید
     site: "@shiameme",
   },
