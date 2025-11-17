@@ -122,7 +122,7 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         alt: `${SITE_NAME_FA} - میم‌های شیعی و اسلامی`,
-        type: "image",
+        type: "image/jpeg",
       },
     ],
     locale: "fa_IR",
