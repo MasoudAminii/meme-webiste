@@ -20,16 +20,25 @@ export default function SignInPage() {
         username: formData.username,
         password: formData.password,
         redirect: false,
+        callbackUrl: "/dashboard", // Add this
       });
 
+      console.log("SignIn result:", result); // Add logging
+
       if (result?.error) {
+        console.error("SignIn error:", result.error);
         setError("نام کاربری یا رمز عبور اشتباه است");
         setLoading(false);
       } else if (result?.ok) {
-        // Successful login - redirect to dashboard
-        router.push("/dashboard");
+        // Force a hard redirect to ensure session is loaded
+        window.location.href = "/dashboard";
+      } else {
+        // Handle unexpected response
+        setError("خطای غیرمنتظره رخ داده است");
+        setLoading(false);
       }
     } catch (err) {
+      console.error("SignIn catch error:", err);
       setError("خطایی رخ داده است. لطفا دوباره تلاش کنید");
       setLoading(false);
     }
