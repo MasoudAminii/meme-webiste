@@ -28,15 +28,13 @@ export async function generateMetadata({
 
   const ogImage = post?.src
     ? new URL(`/gallery/${post.src}`, SITE_URL).toString()
-    : new URL("/banner/main-banner.jpg", SITE_URL).toString();
+    : new URL("/banner/main-banner.jpeg", SITE_URL).toString();
 
   return {
     metadataBase: new URL(SITE_URL),
-    title: post ? `${slug}` : "حلقه فیلم", // Removed extra " | "
-    description: post?.description || "مشاهده رئال‌ها و ویدیوهای سرگرمی",
+    title: post?.description || "مشاهده رئال‌ها و ویدیوهای سرگرمی",
     openGraph: {
-      title: post ? `${slug}` : "حلقه فیلم",
-      description: post?.description || "مشاهده رئال‌ها و ویدیوهای سرگرمی",
+      title: post?.description || "مشاهده رئال‌ها و ویدیوهای سرگرمی",
       images: [
         {
           url: ogImage, // ✅ Use the fixed absolute URL
