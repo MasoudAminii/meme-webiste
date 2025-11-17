@@ -113,11 +113,11 @@ export const metadata: Metadata = {
     url: SITE_URL,
     images: [
       {
-        url: `banner/main-banner.jpg`, // ✅ Absolute URL
+        url: `/banner/main-banner.jpg`, // ✅ Absolute URL
         width: 1200,
         height: 630,
         alt: `${SITE_NAME_FA} - میم‌های شیعی و اسلامی`,
-        type: "image/jpeg",
+        type: "image/jpg",
       },
     ],
     locale: "fa_IR",
