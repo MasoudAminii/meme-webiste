@@ -6,7 +6,8 @@ import prisma from "@/lib/db";
 
 export const authOptions: NextAuthOptions = {
   session: {
-    strategy: "jwt" as const, // Add 'as const' to make it a literal type
+    strategy: "jwt" as const,
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   providers: [
     CredentialsProvider({
@@ -43,11 +44,10 @@ export const authOptions: NextAuthOptions = {
           });
         } catch (error) {
           console.error("Failed to log login activity:", error);
-          // Don't fail login if activity logging fails
         }
 
         return {
-          id: String(user.id), // NextAuth expects string id
+          id: String(user.id),
           username: user.username,
           role: user.role,
         };
@@ -57,41 +57,45 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/signin",
   },
-  
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       // Add user data to token on sign in
       if (user) {
         token.id = user.id;
         token.username = user.username;
         token.role = user.role;
+        token.lastChecked = Date.now(); // Add timestamp
         return token;
       }
 
-      // Verify user still exists in database on subsequent requests
-      if (token.id) {
+      // Only check database every 5 minutes (not on every request!)
+      const now = Date.now();
+      const lastChecked = (token.lastChecked as number) || 0;
+      const fiveMinutes = 5 * 60 * 1000;
+
+      if (token.id && now - lastChecked > fiveMinutes) {
         try {
           const existingUser = await prisma.user.findUnique({
-            where: { id: parseInt(token.id) }, // Convert string to number
+            where: { id: parseInt(token.id as string) },
           });
+
+          token.lastChecked = now; // Update timestamp
 
           // If user doesn't exist, invalidate token
           if (!existingUser) {
-            // Delete the properties to invalidate
             delete token.id;
             delete token.username;
             delete token.role;
             return token;
           }
 
-          // Optional: Update token if role changed
+          // Update token if role changed
           if (existingUser.role !== token.role) {
             token.role = existingUser.role;
           }
         } catch (error) {
           console.error("Error checking user existence:", error);
-          // On error, keep token as is to avoid breaking active sessions
         }
       }
 
@@ -100,10 +104,9 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       // Check if token has valid user data
       if (!token.id || !token.username) {
-        // Return session with no user to trigger logout
         return {
           ...session,
-          expires: new Date(0).toISOString(), // Expire immediately
+          expires: new Date(0).toISOString(),
         };
       }
 

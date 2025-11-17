@@ -111,7 +111,7 @@ export default function AdminHeader({ username = null }) {
     setLoading(false);
     router.push("/signin");
   }
-
+  
   useEffect(() => {
     // Check session validity immediately
     if (session === null || !session?.user?.id) {
@@ -119,7 +119,7 @@ export default function AdminHeader({ username = null }) {
       return;
     }
 
-    // Poll session every 5 seconds to detect if user was deleted
+    // Poll session every 30 seconds instead of 5 (reduce server load)
     const interval = setInterval(async () => {
       try {
         const response = await fetch("/api/auth/session");
@@ -134,7 +134,7 @@ export default function AdminHeader({ username = null }) {
       } catch (error) {
         console.error("Error checking session:", error);
       }
-    }, 5000); // Check every 5 seconds
+    }, 30000); // Changed from 5000 to 30000 (30 seconds)
 
     return () => clearInterval(interval);
   }, [session, router]);

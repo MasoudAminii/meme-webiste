@@ -1,13 +1,12 @@
 // app/admin/dashboard/page.jsx
-import StatsCardsWrapper from "@/Components/AdminPanel/StatsCardsWrapper";
+import { getActivities } from "@/actions/activityActions";
 import QuickActions from "@/Components/AdminPanel/QuickActions";
 import RecentActivity from "@/Components/AdminPanel/RecentActivity";
+import StatsCardsWrapper from "@/Components/AdminPanel/StatsCardsWrapper";
+import { authOptions } from "@/lib/authOptions";
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/authOptions";
-import { getActivities } from "@/actions/activityActions";
 import { Suspense } from "react";
-import prisma from "@/lib/db"; // ADD THIS LINE
 
 // Skeleton loading component for StatsCards
 function StatsCardsSkeleton() {
@@ -117,20 +116,6 @@ export default async function Dashboard() {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user || !session.user.id) {
-    redirect("/signin");
-  }
-
-  try {
-    const userExists = await prisma.user.findUnique({
-      where: { id: parseInt(session.user.id) },
-      select: { id: true },
-    });
-
-    if (!userExists) {
-      redirect("/signin");
-    }
-  } catch (error) {
-    console.error("Error verifying user:", error);
     redirect("/signin");
   }
 
